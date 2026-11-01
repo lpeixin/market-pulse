@@ -1,12 +1,23 @@
 /**
- * MarketPulse — Frontend Visualization & Terminal Controller
+ * MarketPulse — Bilingual (EN / 中文) Frontend Visualization & Terminal Controller
  * Renders 4 interactive ECharts / HTML5 financial widgets with instant
- * US (Green Up / Red Down) <-> CN (Red Up / Green Down) theme switching.
+ * Language (EN <-> 中文) and Color Habit (US Green-Up <-> CN Red-Up) switching.
  */
 
+const urlParams = new URLSearchParams(window.location.search);
+const initialLang =
+  urlParams.get("lang") === "zh" || urlParams.get("lang") === "en"
+    ? urlParams.get("lang")
+    : localStorage.getItem("mp_lang") || "en";
+const initialColor =
+  urlParams.get("color") === "cn" || urlParams.get("color") === "us"
+    ? urlParams.get("color")
+    : localStorage.getItem("mp_color_mode") || "us";
+
 const state = {
-  universeId: "sp500_core",
-  colorMode: localStorage.getItem("mp_color_mode") || "us", // 'us' = Green Up/Red Down, 'cn' = Red Up/Green Down
+  lang: initialLang, // 'en' | 'zh'
+  universeId: urlParams.get("universe") || "sp500_core",
+  colorMode: initialColor, // 'us' = Green Up/Red Down, 'cn' = Red Up/Green Down
   glMode: "diverging", // 'diverging' | 'ranked'
   scatterFilter: "ALL", // 'ALL' | 'ANOMALY' | 'BREAKOUT_SURGE' | 'HEAVY_SELLOFF'
   treemapSector: "ALL",
@@ -14,6 +25,7 @@ const state = {
   tableRegime: "ALL",
   tableSortKey: "market_cap",
   tableSortAsc: false,
+  activeModalTicker: null,
   dashboardData: null,
   universesList: [],
   charts: {
@@ -25,7 +37,289 @@ const state = {
 };
 
 /* ==========================================================================
-   1. COLOR THEME ENGINE (US Green-Up/Red-Down vs CN Red-Up/Green-Down)
+   0. BILINGUAL I18N DICTIONARY (EN & ZH)
+   ========================================================================== */
+
+const I18N = {
+  en: {
+    docTitle: "MarketPulse — US Equity Quantitative Visualization Terminal",
+    tradingDatePrefix: "US Trading Day:",
+    detectingSession: "Detecting market session...",
+    loadError: "Failed to load market data. Click Force Refresh to retry.",
+    universeLabel: "Universe:",
+    editWatchlistBtn: "Watchlist",
+    colorModeUS: "US Color (Green Up)",
+    colorModeCN: "CN Color (Red Up)",
+    pluginsBtnSuffix: "Plugins",
+    forceRefreshBtn: "Force Refresh",
+    fetchingLive: "Fetching Live Data...",
+    loadingData: "Loading...",
+    cacheHitLabel: "SQLite Local Cache",
+    cacheLiveLabel: "Yahoo Finance Live -> SQLite",
+    cacheHybridLabel: "Hybrid (Cache + Live Delta)",
+
+    // KPI Strip
+    kpiMcapTitle: "Universe Market Cap & Cap-Wtd Return",
+    kpiCapWeightedTag: "(Cap-Wtd)",
+    kpiEqualMedianTitle: "Equal-Wtd / Median",
+    kpiBreadthTitle: "Market Breadth",
+    kpiStocksUnit: "Stocks",
+    kpiAdv: "Adv",
+    kpiDec: "Dec",
+    kpiFlat: "Flat",
+    kpiTurnoverTitle: "Daily Turnover & Volume Anomalies",
+    kpiNear52wTitle: "Near 52W High",
+    kpiNear52wSub: "(DD ≤ 5%)",
+    kpiLeadingSector: "Leading Sector",
+    kpiLaggingSector: "Lagging Sector",
+
+    // Widget 1: Treemap
+    w1Title: "Market Cap Treemap",
+    w1Subtitle:
+      "GICS Sector → Ticker 2-Level Hierarchy · Area = Market Cap · Color = Daily Return (-5% to +5%)",
+    w1AllSectors: "All GICS Sectors",
+    w1ResetBtn: "Reset View",
+    w1FooterHint:
+      "Click any stock block to inspect 20-day price trend & detailed metrics",
+    ttSectorMcap: "Sector Market Cap:",
+    ttSectorReturn: "Cap-Weighted Return:",
+    ttSectorCount: "Constituents:",
+    ttPriceChg: "Price / Change:",
+    ttMcapWeight: "Market Cap (Sector Wt):",
+    ttTurnoverRvol: "Turnover / RVOL:",
+    tt52wdd: "52W High Drawdown:",
+    ttClickHint: "Click to inspect 20-day price trend & details →",
+
+    // Widget 2: Top Gainers & Losers
+    w2Title: "Top Gainers & Losers Ranking",
+    w2Subtitle:
+      "Bidirectional horizontal comparison of Top 10 Gainers vs Top 10 Losers · Hover for Amplitude & Turnover",
+    w2ModeDiverging: "Butterfly View",
+    w2ModeRanked: "Ranked Extremes",
+    w2FooterHint:
+      "Hover bars to inspect Intraday Amplitude (%) · Daily Turnover ($) · Relative Volume (RVOL)",
+    w2SpreadLabel: "Top-Bottom Spread:",
+    w2LegendLosers: "Top 10 Losers",
+    w2LegendGainers: "Top 10 Gainers",
+    ttAmplitude: "Intraday Amplitude:",
+    ttTurnover: "Daily Turnover:",
+    ttRvolMcap: "RVOL / Market Cap:",
+
+    // Widget 3: Volume Anomaly Scatter
+    w3Title: "Volume Anomaly vs. Return Radar",
+    w3Subtitle:
+      "X-Axis: Daily Return (%) · Y-Axis: Relative Volume (RVOL = Vol / 20D Avg) · Bubble Size = Market Cap",
+    w3FilterAll: "All",
+    w3FilterAnomaly: "Anomalies (≥1.5x)",
+    w3FilterBreakout: "Breakout Surge",
+    w3FilterSelloff: "Heavy Selloff",
+    w3FooterHint:
+      'Dashed Threshold: <strong class="font-mono-num" style="color: #f59e0b;">RVOL = 1.50x</strong> (Above threshold indicates institutional volume anomaly)',
+    w3BadgeBreakout: "Breakout",
+    w3BadgeSelloff: "Selloff",
+    w3AxisX: "Daily Return (%)",
+    w3AxisY: "Relative Volume (RVOL)",
+    w3ThresholdLine: "RVOL = 1.5x Anomaly Threshold",
+    ttDailyReturnX: "Daily Return (X):",
+    ttRvolY: "Relative Volume RVOL (Y):",
+    ttVolVsAvg: "Volume / 20D Avg:",
+    ttMcapBubble: "Market Cap (Bubble):",
+
+    // Widget 4: Intraday & 52W Table
+    w4Title: "Intraday Range & 52W Water-Level Table",
+    w4Subtitle:
+      "Visual Intraday Price Position Bar (Low–Close–High) & Drawdown from 52-Week High (%) Progress Bar",
+    w4SearchPlaceholder: "Search ticker / name / sector...",
+    w4RegimeAll: "All Water-Levels",
+    w4RegimeStrong: "Strong Close (Pos≥75%)",
+    w4RegimeWeak: "Weak Close (Pos≤25%)",
+    w4RegimeAth: "Near 52W High (DD≤3%)",
+    w4RegimeDeep: "Deep Drawdown (DD≥20%)",
+    thTicker: "Ticker / Company",
+    thPrice: "Price",
+    thChange: "Change %",
+    thMcap: "Market Cap",
+    thRvol: "RVOL",
+    thIntraday: "Intraday Position (Low — Close — High)",
+    thDrawdown: "52W High Drawdown",
+    tbRange: "Range",
+    tbPos: "Pos",
+    tbClosePosTitle: "Intraday Close Position",
+    tb52wRangeTitle: "52W Range",
+    tbShowing: "Showing",
+    tbOf: "of",
+    tbStrongClose: "Strong Close (≥75%)",
+    tbWeakClose: "Weak Close (≤25%)",
+    tbAvg52wDd: "Avg 52W Drawdown",
+
+    // Modals
+    modalClose: "Close ✕",
+    modalKpiPrice: "Latest Price / Change",
+    modalKpiMcap: "Market Cap / Turnover",
+    modalKpiRvol: "Relative Volume (RVOL)",
+    modalKpi52w: "52W Drawdown / 52W High",
+    modalSparklineTitle: "Trailing 20 Trading Days Close Price Action",
+    modalCloseSeries: "Close Price",
+    modalWatchlistTitle: "Custom Watchlist Configuration",
+    modalWatchlistDesc:
+      'Enter US stock tickers separated by commas or spaces (e.g., <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>). MarketPulse will automatically fetch and cache their market data.',
+    modalWatchlistReset: "Reset Defaults",
+    modalWatchlistSave: "Save & Switch to Watchlist",
+    modalPluginsTitle: "MarketPulse Modular Analyzer Plugins (analyzers/)",
+    modalPluginsDesc:
+      'All visual computation modules inherit from <code class="font-mono-num">analyzers.base.BaseAnalyzer</code> and register via <code class="font-mono-num">@AnalyzerRegistry.register</code>, enabling zero-friction expansion for backtesting, ETF flows, and volatility modules:',
+  },
+  zh: {
+    docTitle: "MarketPulse — 美股多维量化行情可视化终端",
+    tradingDatePrefix: "美股交易日:",
+    detectingSession: "正在检测交易日状态...",
+    loadError: "数据加载异常，请点击强制刷新重试",
+    universeLabel: "股票池:",
+    editWatchlistBtn: "自定义池配置",
+    colorModeUS: "美股配色 (绿涨红跌)",
+    colorModeCN: "中式配色 (红涨绿跌)",
+    pluginsBtnSuffix: "分析插件",
+    forceRefreshBtn: "强制刷新数据",
+    fetchingLive: "正在拉取实时行情...",
+    loadingData: "加载数据中...",
+    cacheHitLabel: "SQLite 本地缓存",
+    cacheLiveLabel: "Yahoo Finance 实时 -> SQLite",
+    cacheHybridLabel: "混合源 (本地缓存 + 增量实时)",
+
+    // KPI Strip
+    kpiMcapTitle: "股票池总市值 & 加权收益",
+    kpiCapWeightedTag: "(加权)",
+    kpiEqualMedianTitle: "等权均值 / 中位数",
+    kpiBreadthTitle: "市场涨跌宽度",
+    kpiStocksUnit: "只标的",
+    kpiAdv: "涨",
+    kpiDec: "跌",
+    kpiFlat: "平",
+    kpiTurnoverTitle: "当日总成交额 & 放量异动",
+    kpiNear52wTitle: "逼近 52周高点",
+    kpiNear52wSub: "(回撤 ≤ 5%)",
+    kpiLeadingSector: "领涨行业板块",
+    kpiLaggingSector: "领跌行业板块",
+
+    // Widget 1: Treemap
+    w1Title: "大盘市值热力图 (Market Cap Treemap)",
+    w1Subtitle:
+      "GICS 行业 → 个股两级嵌套 · 面积严格映射总市值 · 颜色深浅映射当日涨跌幅 (-5% ~ +5%)",
+    w1AllSectors: "全部 GICS 行业",
+    w1ResetBtn: "重置视图",
+    w1FooterHint: "点击任意个股方块可查看过去 20 日价格走势与多维指标详情",
+    ttSectorMcap: "板块总市值:",
+    ttSectorReturn: "市值加权涨跌:",
+    ttSectorCount: "成分股数量:",
+    ttPriceChg: "最新价 / 涨跌幅:",
+    ttMcapWeight: "总市值 (板块占比):",
+    ttTurnoverRvol: "当日成交额 / RVOL:",
+    tt52wdd: "52周高点回撤:",
+    ttClickHint: "点击查看 20 日价格趋势与详情 →",
+
+    // Widget 2: Top Gainers & Losers
+    w2Title: "多空涨跌幅龙虎榜 (Top Gainers & Losers)",
+    w2Subtitle:
+      "同屏双向对比当日涨幅 Top 10 与跌幅 Top 10 · 悬停查看日内振幅与成交额",
+    w2ModeDiverging: "双向对称视图",
+    w2ModeRanked: "首尾极值排序",
+    w2FooterHint:
+      "悬停条形图查看：日内振幅 (Amplitude%) · 当日成交额 (Turnover$) · 相对量比 (RVOL)",
+    w2SpreadLabel: "首尾极差:",
+    w2LegendLosers: "跌幅榜 Top 10 (Losers)",
+    w2LegendGainers: "涨幅榜 Top 10 (Gainers)",
+    ttAmplitude: "日内振幅 (Amplitude):",
+    ttTurnover: "当日成交额 (Turnover):",
+    ttRvolMcap: "相对量比 (RVOL) / 市值:",
+
+    // Widget 3: Volume Anomaly Scatter
+    w3Title: "量价异动雷达 (Volume Anomaly vs. Return)",
+    w3Subtitle:
+      "X 轴当日涨跌幅 (%) · Y 轴相对成交量比率 (RVOL = 成交量/20日均量) · 气泡大小映射市值",
+    w3FilterAll: "全部标的",
+    w3FilterAnomaly: "异动 (RVOL≥1.5x)",
+    w3FilterBreakout: "放量突破",
+    w3FilterSelloff: "放量杀跌",
+    w3FooterHint:
+      '虚线阈值: <strong class="font-mono-num" style="color: #f59e0b;">RVOL = 1.50x</strong> (高于阈值代表显著放量异动)',
+    w3BadgeBreakout: "放量突破",
+    w3BadgeSelloff: "放量杀跌",
+    w3AxisX: "涨跌幅 (%)",
+    w3AxisY: "相对成交量 (RVOL)",
+    w3ThresholdLine: "RVOL = 1.5x 异动阈值线",
+    ttDailyReturnX: "当日涨跌幅 (X轴):",
+    ttRvolY: "相对成交量 RVOL (Y轴):",
+    ttVolVsAvg: "当日量 / 20日均量:",
+    ttMcapBubble: "总市值 (气泡大小):",
+
+    // Widget 4: Intraday & 52W Table
+    w4Title: "日内多空博弈与 52 周水位表 (Intraday Range & 52W Drawdown)",
+    w4Subtitle:
+      "可视化日内价格位置条 (Low–Close–High) 与距离 52 周高点回撤幅度进度条",
+    w4SearchPlaceholder: "搜索代码/名称/行业...",
+    w4RegimeAll: "全部水位状态",
+    w4RegimeStrong: "日内高收 (位置≥75%)",
+    w4RegimeWeak: "日内低收 (位置≤25%)",
+    w4RegimeAth: "逼近52周新高 (回撤≤3%)",
+    w4RegimeDeep: "深度回撤 (回撤≥20%)",
+    thTicker: "代码 / 公司",
+    thPrice: "最新价",
+    thChange: "涨跌幅",
+    thMcap: "总市值",
+    thRvol: "量比 RVOL",
+    thIntraday: "日内价格位置 (Low — Close — High)",
+    thDrawdown: "52周高点回撤",
+    tbRange: "振幅",
+    tbPos: "位置",
+    tbClosePosTitle: "收盘价位置",
+    tb52wRangeTitle: "52周区间",
+    tbShowing: "显示",
+    tbOf: "/",
+    tbStrongClose: "日内高位收盘(≥75%)",
+    tbWeakClose: "日内低位收盘(≤25%)",
+    tbAvg52wDd: "平均52周回撤",
+
+    // Modals
+    modalClose: "关闭 ✕",
+    modalKpiPrice: "最新价 / 涨跌幅",
+    modalKpiMcap: "总市值 / 成交额",
+    modalKpiRvol: "相对量比 (RVOL)",
+    modalKpi52w: "52周回撤 / 52周高点",
+    modalSparklineTitle: "过去 20 个交易日收盘价走势 (20-Day Close Price Action)",
+    modalCloseSeries: "收盘价",
+    modalWatchlistTitle: "自定义观察池配置 (Custom Watchlist)",
+    modalWatchlistDesc:
+      '输入美股代码（以逗号或空格分隔，例如 <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>），保存后自动拉取最新行情并缓存。',
+    modalWatchlistReset: "恢复默认推荐",
+    modalWatchlistSave: "保存并切换到自定义池",
+    modalPluginsTitle: "MarketPulse 模块化分析器插件架构 (analyzers/)",
+    modalPluginsDesc:
+      '所有可视化计算模块均继承自 <code class="font-mono-num">analyzers.base.BaseAnalyzer</code> 并通过装饰器注册至 <code class="font-mono-num">AnalyzerRegistry</code>，无需修改核心数据引擎即可平滑扩展回测、资金流与波动率新面板：',
+  },
+};
+
+function t(key) {
+  return I18N[state.lang]?.[key] ?? I18N.en[key] ?? key;
+}
+
+function isZh() {
+  return state.lang === "zh";
+}
+
+function stockName(item) {
+  if (!item) return "";
+  return isZh()
+    ? item.cn_name || item.name || item.company_name || item.ticker
+    : item.name || item.company_name || item.cn_name || item.ticker;
+}
+
+function sectorName(item) {
+  if (!item) return "";
+  return isZh() ? item.sector_cn || item.sector : item.sector || item.sector_cn;
+}
+
+/* ==========================================================================
+   1. COLOR THEME & LANGUAGE ENGINE
    ========================================================================== */
 
 function getPalette() {
@@ -36,7 +330,6 @@ function getPalette() {
     deep: "#065f46",
     soft: "rgba(16, 185, 129, 0.20)",
     rgb: [16, 185, 129],
-    deepRgb: [6, 95, 70],
   };
   const red = {
     main: "#f43f5e",
@@ -44,36 +337,27 @@ function getPalette() {
     deep: "#9f1239",
     soft: "rgba(244, 63, 94, 0.20)",
     rgb: [244, 63, 94],
-    deepRgb: [159, 18, 57],
   };
 
   return {
     up: isUS ? green : red,
     down: isUS ? red : green,
     neutral: "#334155",
-    neutralRgb: [30, 41, 59],
     amber: "#f59e0b",
     cyan: "#38bdf8",
-    textPrimary: "#f1f5f9",
-    textSecondary: "#94a3b8",
-    border: "#1e293b",
   };
 }
 
-/**
- * Smoothly maps return percentage in [-5%, +5%] to a rich financial terminal RGB color.
- */
 function interpolateReturnColor(changePct) {
   const pal = getPalette();
   const clamped = Math.max(-5.0, Math.min(5.0, Number(changePct) || 0));
-  const neutral = [26, 36, 54]; // Dark slate at 0%
+  const neutral = [26, 36, 54];
 
   if (Math.abs(clamped) < 0.08) {
     return `rgb(${neutral[0]}, ${neutral[1]}, ${neutral[2]})`;
   }
 
   const ratio = Math.min(1.0, Math.abs(clamped) / 5.0);
-  // Nonlinear curve so +/-1% is already clearly distinguishable
   const weight = 0.28 + 0.72 * Math.pow(ratio, 0.75);
   const target = clamped > 0 ? pal.up.rgb : pal.down.rgb;
 
@@ -81,6 +365,86 @@ function interpolateReturnColor(changePct) {
   const g = Math.round(neutral[1] + (target[1] - neutral[1]) * weight);
   const b = Math.round(neutral[2] + (target[2] - neutral[2]) * weight);
   return `rgb(${r}, ${g}, ${b})`;
+}
+
+function applyStaticTranslations() {
+  document.title = t("docTitle");
+  document.documentElement.setAttribute("lang", isZh() ? "zh-CN" : "en");
+  document.documentElement.setAttribute("data-lang", state.lang);
+  localStorage.setItem("mp_lang", state.lang);
+
+  // Language toggle button highlight
+  const langLabel = document.getElementById("lang-toggle-label");
+  if (langLabel) {
+    langLabel.innerHTML = isZh()
+      ? `<span style="color:#64748b;">EN</span> / <strong style="color:#38bdf8;">中文</strong>`
+      : `<strong style="color:#38bdf8;">EN</strong> / <span style="color:#64748b;">中文</span>`;
+  }
+
+  const setTxt = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t(key);
+  };
+  const setHtml = (id, key) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = t(key);
+  };
+
+  setTxt("label-universe-select", "universeLabel");
+  setTxt("label-edit-watchlist", "editWatchlistBtn");
+  setTxt("refresh-btn-text", "forceRefreshBtn");
+
+  // Widget 1
+  setTxt("w1-title", "w1Title");
+  setTxt("w1-subtitle", "w1Subtitle");
+  setTxt("btn-treemap-reset", "w1ResetBtn");
+  setTxt("w1-footer-hint", "w1FooterHint");
+
+  // Widget 2
+  setTxt("w2-title", "w2Title");
+  setTxt("w2-subtitle", "w2Subtitle");
+  setTxt("btn-gl-diverging", "w2ModeDiverging");
+  setTxt("btn-gl-ranked", "w2ModeRanked");
+  setTxt("w2-footer-hint", "w2FooterHint");
+
+  // Widget 3
+  setTxt("w3-title", "w3Title");
+  setTxt("w3-subtitle", "w3Subtitle");
+  setTxt("btn-sf-all", "w3FilterAll");
+  setTxt("btn-sf-anomaly", "w3FilterAnomaly");
+  setTxt("btn-sf-breakout", "w3FilterBreakout");
+  setTxt("btn-sf-selloff", "w3FilterSelloff");
+  setHtml("w3-footer-hint", "w3FooterHint");
+
+  // Widget 4
+  setTxt("w4-title", "w4Title");
+  setTxt("w4-subtitle", "w4Subtitle");
+  const searchInput = document.getElementById("table-search-input");
+  if (searchInput) searchInput.placeholder = t("w4SearchPlaceholder");
+  setTxt("opt-regime-all", "w4RegimeAll");
+  setTxt("opt-regime-strong", "w4RegimeStrong");
+  setTxt("opt-regime-weak", "w4RegimeWeak");
+  setTxt("opt-regime-ath", "w4RegimeAth");
+  setTxt("opt-regime-deep", "w4RegimeDeep");
+  setTxt("th-ticker", "thTicker");
+  setTxt("th-price", "thPrice");
+  setTxt("th-change", "thChange");
+  setTxt("th-mcap", "thMcap");
+  setTxt("th-rvol", "thRvol");
+  setTxt("th-intraday", "thIntraday");
+  setTxt("th-drawdown", "thDrawdown");
+
+  // Modals
+  setTxt("btn-close-stock-modal", "modalClose");
+  setTxt("modal-sparkline-title", "modalSparklineTitle");
+  setTxt("modal-watchlist-title", "modalWatchlistTitle");
+  setHtml("modal-watchlist-desc", "modalWatchlistDesc");
+  setTxt("btn-close-watchlist-modal", "modalClose");
+  setTxt("btn-reset-default-watchlist", "modalWatchlistReset");
+  setTxt("btn-save-watchlist", "modalWatchlistSave");
+  setTxt("modal-plugins-title", "modalPluginsTitle");
+  setHtml("modal-plugins-desc", "modalPluginsDesc");
+  setTxt("btn-close-plugins-modal", "modalClose");
 }
 
 function updateThemeUI() {
@@ -92,16 +456,17 @@ function updateThemeUI() {
   const legendGrad = document.getElementById("treemap-legend-gradient");
   const pal = getPalette();
 
-  if (state.colorMode === "us") {
-    labelEl.textContent = "美股配色 (绿涨红跌)";
-  } else {
-    labelEl.textContent = "中式配色 (红涨绿跌)";
+  if (labelEl) {
+    labelEl.textContent =
+      state.colorMode === "us" ? t("colorModeUS") : t("colorModeCN");
   }
 
-  indicatorEl.innerHTML = `
-    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${pal.up.main}; display: inline-block;"></span>
-    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${pal.down.main}; display: inline-block;"></span>
-  `;
+  if (indicatorEl) {
+    indicatorEl.innerHTML = `
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: ${pal.up.main}; display: inline-block;"></span>
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: ${pal.down.main}; display: inline-block;"></span>
+    `;
+  }
 
   if (legendGrad) {
     legendGrad.style.background = `linear-gradient(90deg, ${pal.down.main} 0%, #1e293b 50%, ${pal.up.main} 100%)`;
@@ -140,7 +505,7 @@ async function loadDashboard(forceRefresh = false) {
     refreshBtn.classList.add("loading");
     refreshBtn.disabled = true;
     if (refreshIcon) refreshIcon.style.display = "none";
-    refreshText.textContent = forceRefresh ? "正在拉取实时行情..." : "加载数据中...";
+    refreshText.textContent = forceRefresh ? t("fetchingLive") : t("loadingData");
 
     const url = `/api/dashboard?universe=${encodeURIComponent(
       state.universeId
@@ -152,17 +517,22 @@ async function loadDashboard(forceRefresh = false) {
     const data = await res.json();
     state.dashboardData = data;
 
-    populateSectorDropdown(data);
     renderAll();
+
+    // Check if URL requested opening a specific stock modal
+    const modalTicker = urlParams.get("modal");
+    if (modalTicker && !state.activeModalTicker) {
+      state.activeModalTicker = modalTicker.toUpperCase();
+      openStockDetailModal(state.activeModalTicker);
+    }
   } catch (err) {
     console.error("Failed to load dashboard data:", err);
-    document.getElementById("session-label-badge").textContent =
-      "数据加载异常，请点击强制刷新重试";
+    document.getElementById("session-label-badge").textContent = t("loadError");
   } finally {
     refreshBtn.classList.remove("loading");
     refreshBtn.disabled = false;
     if (refreshIcon) refreshIcon.style.display = "inline-block";
-    refreshText.textContent = "强制刷新数据";
+    refreshText.textContent = t("forceRefreshBtn");
   }
 }
 
@@ -172,10 +542,11 @@ function populateSectorDropdown(data) {
   const sectors = data.widgets.market_cap_treemap.sector_summary || [];
   const currentVal = state.treemapSector;
 
-  let html = `<option value="ALL">全部 GICS 行业 (${sectors.length})</option>`;
+  let html = `<option value="ALL">${t("w1AllSectors")} (${sectors.length})</option>`;
   for (const s of sectors) {
     const sign = s.change_pct >= 0 ? "+" : "";
-    html += `<option value="${s.sector}">${s.sector_cn} · ${s.sector} (${sign}${s.change_pct}%)</option>`;
+    const label = isZh() ? `${s.sector_cn} · ${s.sector}` : s.sector;
+    html += `<option value="${s.sector}">${label} (${sign}${s.change_pct}%)</option>`;
   }
   sel.innerHTML = html;
   if ([...sel.options].some((o) => o.value === currentVal)) {
@@ -187,8 +558,11 @@ function populateSectorDropdown(data) {
 }
 
 function renderAll() {
-  if (!state.dashboardData) return;
+  applyStaticTranslations();
   updateThemeUI();
+  if (!state.dashboardData) return;
+
+  populateSectorDropdown(state.dashboardData);
   renderHeaderStatus();
   renderIndicesRibbon();
   renderKpiStrip();
@@ -196,6 +570,13 @@ function renderAll() {
   renderGainersLosers();
   renderVolumeScatter();
   renderIntradayTable();
+
+  if (
+    state.activeModalTicker &&
+    document.getElementById("stock-detail-modal").classList.contains("open")
+  ) {
+    openStockDetailModal(state.activeModalTicker);
+  }
 }
 
 function renderHeaderStatus() {
@@ -206,30 +587,40 @@ function renderHeaderStatus() {
   dotEl.className = `pulse-dot ${session.is_intraday ? "intraday" : "closed"}`;
 
   document.getElementById("trading-date-badge").textContent =
-    `美股交易日: ${session.trading_date}`;
-  document.getElementById("session-label-badge").textContent =
-    session.session_label;
-  document.getElementById("cache-source-badge").textContent =
-    session.data_source || "SQLite Cache";
+    `${t("tradingDatePrefix")} ${session.trading_date}`;
+
+  const sessionText = isZh()
+    ? session.session_label_zh || session.session_label
+    : session.session_label_en || session.session_label;
+  document.getElementById("session-label-badge").textContent = sessionText;
+
+  let cacheSourceText = session.data_source || "SQLite Cache";
+  if (cacheSourceText.includes("Local Cache")) {
+    cacheSourceText = t("cacheHitLabel");
+  } else if (cacheSourceText.includes("Live -> SQLite")) {
+    cacheSourceText = t("cacheLiveLabel");
+  } else if (cacheSourceText.includes("Hybrid")) {
+    cacheSourceText = t("cacheHybridLabel");
+  }
+  document.getElementById("cache-source-badge").textContent = cacheSourceText;
   document.getElementById("timestamp-badge").textContent =
     session.et_time || session.local_time;
 
   if (plugins) {
     document.getElementById("plugin-count-badge").textContent =
-      `${plugins.length} 分析插件`;
+      `${plugins.length} ${t("pluginsBtnSuffix")}`;
   }
 
-  // Sync universe select options counts if universes metadata is present
   if (state.dashboardData.universes_list) {
     state.universesList = state.dashboardData.universes_list;
     const uSelect = document.getElementById("universe-select");
     uSelect.innerHTML = state.universesList
-      .map(
-        (u) =>
-          `<option value="${u.id}" ${
-            u.id === universe.id ? "selected" : ""
-          }>${u.name} (${u.count})</option>`
-      )
+      .map((u) => {
+        const uName = isZh() ? u.name_zh || u.name : u.name_en || u.name;
+        return `<option value="${u.id}" ${
+          u.id === universe.id ? "selected" : ""
+        }>${uName} (${u.count})</option>`;
+      })
       .join("");
   }
 }
@@ -244,14 +635,16 @@ function renderIndicesRibbon() {
 
   container.innerHTML = indices
     .map((idx) => {
-      const isVix = idx.short_name === "VIX";
       const chgClass = getChangeClass(idx.change_pct);
       const badgeClass = getBadgeClass(idx.change_pct);
       const sign = idx.change >= 0 ? "+" : "";
+      const displayName = isZh()
+        ? idx.name_zh || idx.name
+        : idx.name_en || idx.name;
       return `
         <div class="ribbon-card">
           <div class="ribbon-card-top">
-            <span style="font-weight: 700; color: #e2e8f0;">${idx.name}</span>
+            <span style="font-weight: 700; color: #e2e8f0;">${displayName}</span>
             <span class="font-mono-num" style="font-size: 10.5px; color: var(--text-muted);">${idx.short_name}</span>
           </div>
           <div class="ribbon-card-bottom">
@@ -280,17 +673,20 @@ function renderKpiStrip() {
   const topSector = ov.sector_ranking?.[0];
   const worstSector = ov.sector_ranking?.[ov.sector_ranking.length - 1];
 
+  const topSecName = topSector ? sectorName(topSector) : "--";
+  const worstSecName = worstSector ? sectorName(worstSector) : "--";
+
   container.innerHTML = `
     <div class="kpi-box">
       <div>
-        <div style="font-size: 11px; color: var(--text-secondary);">股票池总市值 &amp; 加权收益</div>
+        <div style="font-size: 11px; color: var(--text-secondary);">${t("kpiMcapTitle")}</div>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 3px;">
           <span class="font-mono-num" style="font-size: 16px; font-weight: 800;">${ov.total_market_cap_fmt}</span>
-          <span class="font-mono-num ${capRetClass}" style="font-size: 13px; font-weight: 700;">${formatSignPct(ov.cap_weighted_return_pct)} (加权)</span>
+          <span class="font-mono-num ${capRetClass}" style="font-size: 13px; font-weight: 700;">${formatSignPct(ov.cap_weighted_return_pct)} ${t("kpiCapWeightedTag")}</span>
         </div>
       </div>
       <div style="text-align: right;">
-        <div style="font-size: 11px; color: var(--text-muted);">等权均值 / 中位数</div>
+        <div style="font-size: 11px; color: var(--text-muted);">${t("kpiEqualMedianTitle")}</div>
         <div class="font-mono-num ${eqRetClass}" style="font-size: 12px; font-weight: 600; margin-top: 3px;">
           ${formatSignPct(ov.equal_weighted_return_pct)} / ${formatSignPct(ov.median_return_pct)}
         </div>
@@ -299,11 +695,11 @@ function renderKpiStrip() {
 
     <div class="kpi-box" style="flex-direction: column; align-items: stretch;">
       <div style="display: flex; justify-content: space-between; font-size: 11px;">
-        <span style="color: var(--text-secondary);">市场涨跌宽度 (${ov.total_stocks} 只标的)</span>
+        <span style="color: var(--text-secondary);">${t("kpiBreadthTitle")} (${ov.total_stocks} ${t("kpiStocksUnit")})</span>
         <span class="font-mono-num">
-          <strong class="text-up">${ov.advancers} 涨</strong> ·
-          <strong class="text-down">${ov.decliners} 跌</strong>
-          ${ov.unchanged ? `· <span class="text-flat">${ov.unchanged} 平</span>` : ""}
+          <strong class="text-up">${ov.advancers} ${t("kpiAdv")}</strong> ·
+          <strong class="text-down">${ov.decliners} ${t("kpiDec")}</strong>
+          ${ov.unchanged ? `· <span class="text-flat">${ov.unchanged} ${t("kpiFlat")}</span>` : ""}
         </span>
       </div>
       <div class="breadth-bar-track">
@@ -313,33 +709,33 @@ function renderKpiStrip() {
 
     <div class="kpi-box">
       <div>
-        <div style="font-size: 11px; color: var(--text-secondary);">当日总成交额 &amp; 放量异动</div>
+        <div style="font-size: 11px; color: var(--text-secondary);">${t("kpiTurnoverTitle")}</div>
         <div style="display: flex; align-items: baseline; gap: 8px; margin-top: 3px;">
           <span class="font-mono-num" style="font-size: 16px; font-weight: 800;">${ov.total_turnover_fmt}</span>
           <span class="font-mono-num" style="font-size: 12px; color: #f59e0b; font-weight: 700;">
-            ${ov.anomaly_volume_count} 只 RVOL≥1.5x
+            ${ov.anomaly_volume_count} RVOL≥1.5x
           </span>
         </div>
       </div>
       <div style="text-align: right;">
-        <div style="font-size: 11px; color: var(--text-muted);">逼近 52周高点</div>
+        <div style="font-size: 11px; color: var(--text-muted);">${t("kpiNear52wTitle")}</div>
         <div class="font-mono-num" style="font-size: 13px; font-weight: 700; color: #38bdf8; margin-top: 3px;">
-          ${ov.near_52w_high_count} 只 (回撤≤5%)
+          ${ov.near_52w_high_count} ${t("kpiNear52wSub")}
         </div>
       </div>
     </div>
 
     <div class="kpi-box">
       <div>
-        <div style="font-size: 11px; color: var(--text-secondary);">领涨行业板块</div>
-        <div style="margin-top: 3px; font-weight: 700; font-size: 12.5px;">
-          ${topSector ? `${topSector.sector_cn} <span class="font-mono-num ${getChangeClass(topSector.change_pct)}">${formatSignPct(topSector.change_pct)}</span>` : "--"}
+        <div style="font-size: 11px; color: var(--text-secondary);">${t("kpiLeadingSector")}</div>
+        <div style="margin-top: 3px; font-weight: 700; font-size: 12px;">
+          ${topSector ? `${topSecName} <span class="font-mono-num ${getChangeClass(topSector.change_pct)}">${formatSignPct(topSector.change_pct)}</span>` : "--"}
         </div>
       </div>
       <div style="text-align: right;">
-        <div style="font-size: 11px; color: var(--text-secondary);">领跌行业板块</div>
-        <div style="margin-top: 3px; font-weight: 700; font-size: 12.5px;">
-          ${worstSector ? `${worstSector.sector_cn} <span class="font-mono-num ${getChangeClass(worstSector.change_pct)}">${formatSignPct(worstSector.change_pct)}</span>` : "--"}
+        <div style="font-size: 11px; color: var(--text-secondary);">${t("kpiLaggingSector")}</div>
+        <div style="margin-top: 3px; font-weight: 700; font-size: 12px;">
+          ${worstSector ? `${worstSecName} <span class="font-mono-num ${getChangeClass(worstSector.change_pct)}">${formatSignPct(worstSector.change_pct)}</span>` : "--"}
         </div>
       </div>
     </div>
@@ -347,7 +743,7 @@ function renderKpiStrip() {
 }
 
 /* ==========================================================================
-   3. WIDGET 1: MARKET CAP TREEMAP (大盘市值热力图)
+   3. WIDGET 1: MARKET CAP TREEMAP
    ========================================================================== */
 
 function renderTreemap() {
@@ -370,12 +766,12 @@ function renderTreemap() {
     rawTree = rawTree.filter((sec) => sec.sector === state.treemapSector);
   }
 
-  // Transform tree nodes with explicit dynamic colors mapped from change_pct
   const styledTree = rawTree.map((sectorNode) => {
     const secSign = sectorNode.change_pct >= 0 ? "+" : "";
+    const secTitle = isZh() ? sectorNode.sector_cn : sectorNode.sector;
     return {
       ...sectorNode,
-      name: `${sectorNode.sector_cn} (${secSign}${sectorNode.change_pct}%) · ${sectorNode.market_cap_fmt}`,
+      name: `${secTitle} (${secSign}${sectorNode.change_pct}%) · ${sectorNode.market_cap_fmt}`,
       value: sectorNode.market_cap_b,
       itemStyle: {
         borderColor: "#0b111e",
@@ -408,58 +804,59 @@ function renderTreemap() {
       formatter: (info) => {
         const d = info.data;
         if (!d) return "";
-        // Sector Node Tooltip
         if (d.children) {
           const sign = d.change_pct >= 0 ? "+" : "";
+          const secHeader = isZh()
+            ? `${d.sector_cn} (${d.sector})`
+            : d.sector;
           return `
-            <div style="min-width: 190px;">
+            <div style="min-width: 195px;">
               <div style="font-weight: 800; font-size: 13px; margin-bottom: 4px; color: #38bdf8;">
-                ${d.sector_cn} (${d.sector})
+                ${secHeader}
               </div>
               <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                <span style="color:#94a3b8;">板块总市值:</span>
+                <span style="color:#94a3b8;">${t("ttSectorMcap")}</span>
                 <strong class="font-mono-num">${d.market_cap_fmt} (${d.weight_pct}%)</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                <span style="color:#94a3b8;">市值加权涨跌:</span>
+                <span style="color:#94a3b8;">${t("ttSectorReturn")}</span>
                 <strong class="font-mono-num">${sign}${d.change_pct}%</strong>
               </div>
               <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                <span style="color:#94a3b8;">成分股数量:</span>
-                <strong class="font-mono-num">${d.stock_count} 只</strong>
+                <span style="color:#94a3b8;">${t("ttSectorCount")}</span>
+                <strong class="font-mono-num">${d.stock_count}</strong>
               </div>
             </div>
           `;
         }
-        // Individual Stock Leaf Tooltip
         const sign = d.change_pct >= 0 ? "+" : "";
         return `
-          <div style="min-width: 215px;">
+          <div style="min-width: 220px;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 5px;">
               <div>
                 <strong style="font-size: 14px; color: #fff;">${d.ticker}</strong>
-                <span style="color: #94a3b8; font-size: 11.5px; margin-left: 4px;">${d.cn_name}</span>
+                <span style="color: #94a3b8; font-size: 11.5px; margin-left: 4px;">${stockName(d)}</span>
               </div>
-              <span style="font-size: 11px; color: #38bdf8;">${d.sector_cn}</span>
+              <span style="font-size: 11px; color: #38bdf8;">${sectorName(d)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-              <span style="color:#94a3b8;">最新价 / 涨跌幅:</span>
+              <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
               <strong class="font-mono-num">$${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-              <span style="color:#94a3b8;">总市值 (板块占比):</span>
+              <span style="color:#94a3b8;">${t("ttMcapWeight")}</span>
               <strong class="font-mono-num">${d.market_cap_fmt} (${d.weight_in_sector_pct}%)</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-              <span style="color:#94a3b8;">当日成交额 / RVOL:</span>
+              <span style="color:#94a3b8;">${t("ttTurnoverRvol")}</span>
               <strong class="font-mono-num">${d.turnover_fmt} / ${d.rvol.toFixed(2)}x</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-              <span style="color:#94a3b8;">52周高点回撤:</span>
+              <span style="color:#94a3b8;">${t("tt52wdd")}</span>
               <strong class="font-mono-num">${d.drawdown_52w_pct.toFixed(2)}%</strong>
             </div>
             <div style="margin-top: 5px; font-size: 10.5px; color: #64748b; text-align: right;">
-              点击查看 20 日价格趋势与详情 →
+              ${t("ttClickHint")}
             </div>
           </div>
         `;
@@ -467,15 +864,13 @@ function renderTreemap() {
     },
     series: [
       {
-        name: "美股市值热力图",
+        name: "Market Cap Treemap",
         type: "treemap",
         width: "100%",
         height: "100%",
         roam: false,
         nodeClick: false,
-        breadcrumb: {
-          show: false,
-        },
+        breadcrumb: { show: false },
         label: {
           show: true,
           position: "inside",
@@ -526,11 +921,7 @@ function renderTreemap() {
         },
         levels: [
           {
-            itemStyle: {
-              borderColor: "#090d16",
-              borderWidth: 2,
-              gapWidth: 2,
-            },
+            itemStyle: { borderColor: "#090d16", borderWidth: 2, gapWidth: 2 },
             upperLabel: { show: false },
           },
           {
@@ -539,10 +930,7 @@ function renderTreemap() {
               borderWidth: 2,
               gapWidth: 1.5,
             },
-            upperLabel: {
-              show: true,
-              height: 19,
-            },
+            upperLabel: { show: true, height: 19 },
           },
           {
             itemStyle: {
@@ -561,7 +949,7 @@ function renderTreemap() {
 }
 
 /* ==========================================================================
-   4. WIDGET 2: TOP GAINERS & LOSERS BAR CHART (多空涨跌幅龙虎榜)
+   4. WIDGET 2: TOP GAINERS & LOSERS BAR CHART
    ========================================================================== */
 
 function renderGainersLosers() {
@@ -582,11 +970,10 @@ function renderGainersLosers() {
   const gainers = gl.gainers || [];
   const losers = gl.losers || [];
 
-  // Update footer spread badge
   const spreadBadge = document.getElementById("gl-spread-badge");
   if (spreadBadge && gl.best_ticker && gl.worst_ticker) {
     const spread = (gl.best_ticker.change_pct - gl.worst_ticker.change_pct).toFixed(2);
-    spreadBadge.innerHTML = `首尾极差: <strong style="color:#f8fafc;">${spread}%</strong> (${gl.best_ticker.ticker} ${formatSignPct(gl.best_ticker.change_pct)} vs ${gl.worst_ticker.ticker} ${formatSignPct(gl.worst_ticker.change_pct)})`;
+    spreadBadge.innerHTML = `${t("w2SpreadLabel")} <strong style="color:#f8fafc;">${spread}%</strong> (${gl.best_ticker.ticker} ${formatSignPct(gl.best_ticker.change_pct)} vs ${gl.worst_ticker.ticker} ${formatSignPct(gl.worst_ticker.change_pct)})`;
   }
 
   const tooltipFormatter = (params) => {
@@ -597,40 +984,41 @@ function renderGainersLosers() {
     if (!d) return "";
     const sign = d.change_pct >= 0 ? "+" : "";
     return `
-      <div style="min-width: 210px;">
+      <div style="min-width: 215px;">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid #334155; padding-bottom:4px; margin-bottom:5px;">
-          <strong>#${d.rank} ${d.ticker} · ${d.cn_name}</strong>
-          <span style="color:#38bdf8; font-size:11px;">${d.sector_cn}</span>
+          <strong>#${d.rank} ${d.ticker} · ${stockName(d)}</strong>
+          <span style="color:#38bdf8; font-size:11px;">${sectorName(d)}</span>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
-          <span style="color:#94a3b8;">最新价 / 涨跌幅:</span>
+          <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
           <strong class="font-mono-num">$${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
-          <span style="color:#94a3b8;">日内振幅 (Amplitude):</span>
+          <span style="color:#94a3b8;">${t("ttAmplitude")}</span>
           <strong class="font-mono-num" style="color:#f59e0b;">${d.intraday_range_pct.toFixed(2)}% ($${d.low.toFixed(2)} - $${d.high.toFixed(2)})</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
-          <span style="color:#94a3b8;">当日成交额 (Turnover):</span>
+          <span style="color:#94a3b8;">${t("ttTurnover")}</span>
           <strong class="font-mono-num" style="color:#38bdf8;">${d.turnover_fmt}</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
-          <span style="color:#94a3b8;">相对量比 (RVOL) / 市值:</span>
+          <span style="color:#94a3b8;">${t("ttRvolMcap")}</span>
           <strong class="font-mono-num">${d.rvol.toFixed(2)}x / ${d.market_cap_fmt}</strong>
         </div>
       </div>
     `;
   };
 
+  const loserLegend = t("w2LegendLosers");
+  const gainerLegend = t("w2LegendGainers");
+
   if (state.glMode === "diverging") {
-    // Bidirectional butterfly horizontal bar chart: Rank #1 (top) to Rank #10 (bottom)
-    const pairs = [...(gl.paired_ranks || [])].reverse(); // reverse so Rank 1 is at top of Y axis
+    const pairs = [...(gl.paired_ranks || [])].reverse();
     const yCategories = pairs.map((p) => `TOP ${p.rank}`);
 
     const gainerSeriesData = pairs.map((p) => {
       const g = p.gainer;
       if (!g) return { value: 0, meta: null };
-      // Ensure positive visual bar length even if all stocks fell on a broad market selloff day
       const val = Math.max(0.05, g.change_pct);
       return {
         value: val,
@@ -683,7 +1071,7 @@ function renderGainersLosers() {
         top: 0,
         right: 10,
         textStyle: { color: "#94a3b8", fontSize: 11 },
-        data: ["跌幅榜 Top 10 (Losers)", "涨幅榜 Top 10 (Gainers)"],
+        data: [loserLegend, gainerLegend],
       },
       grid: {
         top: 28,
@@ -719,7 +1107,7 @@ function renderGainersLosers() {
       },
       series: [
         {
-          name: "跌幅榜 Top 10 (Losers)",
+          name: loserLegend,
           type: "bar",
           stack: "bidirectional",
           barWidth: 16,
@@ -739,7 +1127,7 @@ function renderGainersLosers() {
           },
         },
         {
-          name: "涨幅榜 Top 10 (Gainers)",
+          name: gainerLegend,
           type: "bar",
           stack: "bidirectional",
           barWidth: 16,
@@ -763,7 +1151,6 @@ function renderGainersLosers() {
 
     state.charts.gainersLosers.setOption(option, true);
   } else {
-    // Ranked mode: Top 10 Gainers and Top 10 Losers in a single sorted horizontal bar chart
     const combined = [...losers, ...[...gainers].reverse()];
     const yLabels = combined.map((d) => d.ticker);
     const barData = combined.map((d) => ({
@@ -785,12 +1172,7 @@ function renderGainersLosers() {
         textStyle: { color: "#f8fafc", fontSize: 12 },
         formatter: tooltipFormatter,
       },
-      grid: {
-        top: 12,
-        bottom: 24,
-        left: 62,
-        right: 62,
-      },
+      grid: { top: 12, bottom: 24, left: 62, right: 62 },
       xAxis: {
         type: "value",
         splitLine: {
@@ -836,7 +1218,7 @@ function renderGainersLosers() {
 }
 
 /* ==========================================================================
-   5. WIDGET 3: VOLUME ANOMALY VS RETURN SCATTER (量价异动雷达)
+   5. WIDGET 3: VOLUME ANOMALY VS RETURN SCATTER
    ========================================================================== */
 
 function renderVolumeScatter() {
@@ -854,13 +1236,12 @@ function renderVolumeScatter() {
   if (!va) return;
   const pal = getPalette();
 
-  // Quadrant count badges
   const qCounts = va.quadrant_counts || {};
   const badgesEl = document.getElementById("scatter-quadrant-badges");
   if (badgesEl) {
     badgesEl.innerHTML = `
-      <span class="badge-change badge-up font-mono-num">放量突破: ${qCounts.breakout_surge || 0}</span>
-      <span class="badge-change badge-down font-mono-num">放量杀跌: ${qCounts.heavy_selloff || 0}</span>
+      <span class="badge-change badge-up font-mono-num">${t("w3BadgeBreakout")}: ${qCounts.breakout_surge || 0}</span>
+      <span class="badge-change badge-down font-mono-num">${t("w3BadgeSelloff")}: ${qCounts.heavy_selloff || 0}</span>
     `;
   }
 
@@ -879,7 +1260,7 @@ function renderVolumeScatter() {
       symbolSize: p.symbol_size,
       meta: p,
       itemStyle: {
-        color: isUp ? baseColor.soft : baseColor.soft,
+        color: baseColor.soft,
         borderColor: baseColor.bright,
         borderWidth: p.is_anomaly ? 2.4 : 1.3,
         shadowBlur: p.is_anomaly ? 12 : 0,
@@ -913,41 +1294,39 @@ function renderVolumeScatter() {
         const d = params.data?.meta;
         if (!d) return "";
         const sign = d.change_pct >= 0 ? "+" : "";
+        const qLabel = isZh()
+          ? d.quadrant_label_zh || d.quadrant_label
+          : d.quadrant_label_en || d.quadrant_label;
         return `
-          <div style="min-width: 215px;">
+          <div style="min-width: 220px;">
             <div style="display:flex; justify-content:space-between; border-bottom:1px solid #334155; padding-bottom:4px; margin-bottom:5px;">
-              <strong>${d.ticker} · ${d.cn_name}</strong>
-              <span style="color:#f59e0b; font-size:11px; font-weight:700;">${d.quadrant_label}</span>
+              <strong>${d.ticker} · ${stockName(d)}</strong>
+              <span style="color:#f59e0b; font-size:11px; font-weight:700;">${qLabel}</span>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
-              <span style="color:#94a3b8;">当日涨跌幅 (X轴):</span>
+              <span style="color:#94a3b8;">${t("ttDailyReturnX")}</span>
               <strong class="font-mono-num">${sign}${d.change_pct.toFixed(2)}% ($${d.price.toFixed(2)})</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
-              <span style="color:#94a3b8;">相对成交量 RVOL (Y轴):</span>
+              <span style="color:#94a3b8;">${t("ttRvolY")}</span>
               <strong class="font-mono-num" style="color:${d.is_anomaly ? "#f59e0b" : "#f8fafc"};">${d.rvol.toFixed(2)}x</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
-              <span style="color:#94a3b8;">当日量 / 20日均量:</span>
+              <span style="color:#94a3b8;">${t("ttVolVsAvg")}</span>
               <strong class="font-mono-num">${d.volume_fmt} / ${d.avg_volume_20d_fmt}</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
-              <span style="color:#94a3b8;">总市值 (气泡大小):</span>
+              <span style="color:#94a3b8;">${t("ttMcapBubble")}</span>
               <strong class="font-mono-num">${d.market_cap_fmt}</strong>
             </div>
           </div>
         `;
       },
     },
-    grid: {
-      top: 26,
-      bottom: 34,
-      left: 52,
-      right: 28,
-    },
+    grid: { top: 26, bottom: 34, left: 52, right: 28 },
     xAxis: {
       type: "value",
-      name: "涨跌幅 (%)",
+      name: t("w3AxisX"),
       nameLocation: "middle",
       nameGap: 22,
       nameTextStyle: { color: "#94a3b8", fontSize: 11 },
@@ -963,7 +1342,7 @@ function renderVolumeScatter() {
     },
     yAxis: {
       type: "value",
-      name: "相对成交量 (RVOL)",
+      name: t("w3AxisY"),
       min: 0,
       max: yMax,
       nameTextStyle: { color: "#94a3b8", fontSize: 11, align: "left" },
@@ -979,7 +1358,7 @@ function renderVolumeScatter() {
     },
     series: [
       {
-        name: "量价异动散点",
+        name: "Volume Scatter",
         type: "scatter",
         data: scatterData,
         markLine: {
@@ -988,13 +1367,9 @@ function renderVolumeScatter() {
           data: [
             {
               yAxis: va.rvol_threshold || 1.5,
-              lineStyle: {
-                color: "#f59e0b",
-                type: "dashed",
-                width: 1.8,
-              },
+              lineStyle: { color: "#f59e0b", type: "dashed", width: 1.8 },
               label: {
-                formatter: "RVOL = 1.5x 异动阈值线",
+                formatter: t("w3ThresholdLine"),
                 position: "insideEndTop",
                 color: "#f59e0b",
                 fontSize: 11,
@@ -1014,15 +1389,8 @@ function renderVolumeScatter() {
         },
         markArea: {
           silent: true,
-          itemStyle: {
-            color: "rgba(245, 158, 11, 0.04)",
-          },
-          data: [
-            [
-              { yAxis: va.rvol_threshold || 1.5 },
-              { yAxis: yMax },
-            ],
-          ],
+          itemStyle: { color: "rgba(245, 158, 11, 0.04)" },
+          data: [[{ yAxis: va.rvol_threshold || 1.5 }, { yAxis: yMax }]],
         },
       },
     ],
@@ -1043,7 +1411,6 @@ function renderIntradayTable() {
   const pal = getPalette();
   let rows = [...(tbData.rows || [])];
 
-  // Apply search filter
   const q = state.tableSearch.trim().toLowerCase();
   if (q) {
     rows = rows.filter(
@@ -1051,11 +1418,11 @@ function renderIntradayTable() {
         r.ticker.toLowerCase().includes(q) ||
         r.name.toLowerCase().includes(q) ||
         r.cn_name.toLowerCase().includes(q) ||
+        r.sector.toLowerCase().includes(q) ||
         r.sector_cn.toLowerCase().includes(q)
     );
   }
 
-  // Apply regime filter
   if (state.tableRegime === "STRONG_CLOSE") {
     rows = rows.filter((r) => r.intraday_pos_pct >= 75.0);
   } else if (state.tableRegime === "WEAK_CLOSE") {
@@ -1066,7 +1433,6 @@ function renderIntradayTable() {
     rows = rows.filter((r) => r.drawdown_52w_pct <= -20.0);
   }
 
-  // Sort rows
   const sortKey = state.tableSortKey;
   const dir = state.tableSortAsc ? 1 : -1;
   rows.sort((a, b) => {
@@ -1078,7 +1444,6 @@ function renderIntradayTable() {
     return ((Number(va) || 0) - (Number(vb) || 0)) * dir;
   });
 
-  // Update table sort header indicators
   document.querySelectorAll("#intraday-52w-table thead th").forEach((th) => {
     const k = th.getAttribute("data-sort");
     const ind = th.querySelector(".sort-indicator");
@@ -1097,36 +1462,34 @@ function renderIntradayTable() {
       const isUp = r.change_pct >= 0;
       const barColor = isUp ? pal.up.main : pal.down.main;
 
-      // Intraday range span between Open and Close
       const leftPct = Math.min(r.intraday_open_pos_pct, r.intraday_pos_pct);
       const widthPct = Math.max(
         4,
         Math.abs(r.intraday_pos_pct - r.intraday_open_pos_pct)
       );
 
-      // 52W Drawdown visual progress width (cap at 50% drawdown = 100% bar width for visual clarity)
       const ddAbs = Math.abs(r.drawdown_52w_pct);
       const ddBarWidth = Math.min(100, (ddAbs / 45.0) * 100);
       const ddColor =
-        ddAbs <= 5
-          ? "#38bdf8"
-          : ddAbs <= 15
-          ? "#f59e0b"
-          : pal.down.main;
+        ddAbs <= 5 ? "#38bdf8" : ddAbs <= 15 ? "#f59e0b" : pal.down.main;
 
       const rvolColor =
         r.rvol >= 1.5
           ? "color: #f59e0b; font-weight: 800;"
           : "color: var(--text-secondary);";
 
+      const regText = isZh()
+        ? r.regime_label_zh || r.regime_label
+        : r.regime_label_en || r.regime_label;
+
       return `
         <tr data-ticker="${r.ticker}">
           <td>
             <div style="display: flex; align-items: center; gap: 6px;">
               <strong class="font-mono-num" style="color: #fff; font-size: 12.5px;">${r.ticker}</strong>
-              <span style="font-size: 11px; color: var(--text-secondary);">${r.cn_name}</span>
+              <span style="font-size: 11px; color: var(--text-secondary); max-width: 115px; overflow: hidden; text-overflow: ellipsis;">${stockName(r)}</span>
             </div>
-            <div style="font-size: 10px; color: var(--text-muted);">${r.sector_cn}</div>
+            <div style="font-size: 10px; color: var(--text-muted);">${sectorName(r)}</div>
           </td>
           <td class="font-mono-num ${chgClass}" style="text-align: right; font-weight: 700;">
             $${r.price.toFixed(2)}
@@ -1143,21 +1506,21 @@ function renderIntradayTable() {
           <td class="intraday-cell">
             <div class="range-bar-labels font-mono-num">
               <span>L: $${r.low.toFixed(2)}</span>
-              <span style="color: #cbd5e1;">振幅 ${r.intraday_range_pct.toFixed(1)}% · 位置 ${r.intraday_pos_pct.toFixed(0)}%</span>
+              <span style="color: #cbd5e1;">${t("tbRange")} ${r.intraday_range_pct.toFixed(1)}% · ${t("tbPos")} ${r.intraday_pos_pct.toFixed(0)}%</span>
               <span>H: $${r.high.toFixed(2)}</span>
             </div>
             <div class="range-bar-track">
               <div class="range-bar-fill" style="left: ${leftPct}%; width: ${widthPct}%; background: ${barColor};"></div>
-              <div class="range-bar-marker" style="left: ${r.intraday_pos_pct}%;" title="收盘价位置: ${r.intraday_pos_pct}%"></div>
+              <div class="range-bar-marker" style="left: ${r.intraday_pos_pct}%;" title="${t("tbClosePosTitle")}: ${r.intraday_pos_pct}%"></div>
             </div>
           </td>
           <td class="drawdown-cell">
             <div class="range-bar-labels font-mono-num">
               <span style="color: #e2e8f0; font-weight: 700;">${r.drawdown_52w_pct.toFixed(2)}%</span>
-              <span style="color: ${ddColor}; font-size: 10px;">${r.regime_label}</span>
-              <span>52W H: $${r.high_52w.toFixed(2)}</span>
+              <span style="color: ${ddColor}; font-size: 9.5px;">${regText}</span>
+              <span>H:$${r.high_52w.toFixed(0)}</span>
             </div>
-            <div class="dd-bar-track" title="52周区间: $${r.low_52w.toFixed(2)} — $${r.high_52w.toFixed(2)} (当前处于52周区间 ${r.pos_52w_pct}%)">
+            <div class="dd-bar-track" title="${t("tb52wRangeTitle")}: $${r.low_52w.toFixed(2)} — $${r.high_52w.toFixed(2)} (${r.pos_52w_pct}%)">
               <div class="dd-bar-fill" style="width: ${ddBarWidth.toFixed(1)}%; background: ${ddColor};"></div>
             </div>
           </td>
@@ -1166,26 +1529,24 @@ function renderIntradayTable() {
     })
     .join("");
 
-  // Bind row click to open Stock Detail Modal
   tbody.querySelectorAll("tr[data-ticker]").forEach((tr) => {
     tr.addEventListener("click", () => {
       openStockDetailModal(tr.getAttribute("data-ticker"));
     });
   });
 
-  // Footer summary
   const sum = tbData.summary || {};
   document.getElementById("table-count-label").textContent =
-    `显示 ${rows.length} / ${sum.total || rows.length} 只标的`;
+    `${t("tbShowing")} ${rows.length} ${t("tbOf")} ${sum.total || rows.length} ${t("kpiStocksUnit")}`;
   document.getElementById("table-regime-summary").innerHTML = `
-    日内高位收盘(≥75%): <strong class="font-mono-num" style="color:#f8fafc;">${sum.strong_intraday_close_count || 0}</strong> ·
-    日内低位收盘(≤25%): <strong class="font-mono-num" style="color:#f8fafc;">${sum.weak_intraday_close_count || 0}</strong> ·
-    平均52周回撤: <strong class="font-mono-num" style="color:#f59e0b;">${sum.avg_drawdown_52w_pct || 0}%</strong>
+    ${t("tbStrongClose")}: <strong class="font-mono-num" style="color:#f8fafc;">${sum.strong_intraday_close_count || 0}</strong> ·
+    ${t("tbWeakClose")}: <strong class="font-mono-num" style="color:#f8fafc;">${sum.weak_intraday_close_count || 0}</strong> ·
+    ${t("tbAvg52wDd")}: <strong class="font-mono-num" style="color:#f59e0b;">${sum.avg_drawdown_52w_pct || 0}%</strong>
   `;
 }
 
 /* ==========================================================================
-   7. INTERACTIVE MODALS (20D Sparkline Detail, Watchlist Editor, Plugins)
+   7. INTERACTIVE MODALS
    ========================================================================== */
 
 function openStockDetailModal(ticker) {
@@ -1193,43 +1554,45 @@ function openStockDetailModal(ticker) {
   const stock = records.find((r) => r.ticker === ticker);
   if (!stock) return;
 
+  state.activeModalTicker = ticker;
   const modal = document.getElementById("stock-detail-modal");
   modal.classList.add("open");
 
   document.getElementById("modal-stock-ticker").textContent = stock.ticker;
-  document.getElementById("modal-stock-name").textContent = `${stock.cn_name} (${stock.name})`;
-  document.getElementById("modal-stock-sector").textContent = stock.sector_cn;
+  document.getElementById("modal-stock-name").textContent = isZh()
+    ? `${stock.cn_name} (${stock.name})`
+    : stock.name;
+  document.getElementById("modal-stock-sector").textContent = sectorName(stock);
 
   const chgClass = getChangeClass(stock.change_pct);
   const kpisEl = document.getElementById("modal-stock-kpis");
   kpisEl.innerHTML = `
     <div class="ribbon-card">
-      <div class="ribbon-card-top">最新价 / 涨跌幅</div>
+      <div class="ribbon-card-top">${t("modalKpiPrice")}</div>
       <div class="font-mono-num ${chgClass}" style="font-size: 15px; font-weight: 800;">
         $${stock.price.toFixed(2)} (${formatSignPct(stock.change_pct)})
       </div>
     </div>
     <div class="ribbon-card">
-      <div class="ribbon-card-top">总市值 / 成交额</div>
+      <div class="ribbon-card-top">${t("modalKpiMcap")}</div>
       <div class="font-mono-num" style="font-size: 14px; font-weight: 700;">
         ${stock.market_cap_fmt} / ${stock.turnover_fmt}
       </div>
     </div>
     <div class="ribbon-card">
-      <div class="ribbon-card-top">相对量比 (RVOL)</div>
+      <div class="ribbon-card-top">${t("modalKpiRvol")}</div>
       <div class="font-mono-num" style="font-size: 14px; font-weight: 700; color: ${stock.rvol >= 1.5 ? "#f59e0b" : "#f8fafc"};">
         ${stock.rvol.toFixed(2)}x (${stock.volume_fmt})
       </div>
     </div>
     <div class="ribbon-card">
-      <div class="ribbon-card-top">52周回撤 / 52周高点</div>
+      <div class="ribbon-card-top">${t("modalKpi52w")}</div>
       <div class="font-mono-num" style="font-size: 14px; font-weight: 700;">
         ${stock.drawdown_52w_pct.toFixed(2)}% ($${stock.high_52w.toFixed(2)})
       </div>
     </div>
   `;
 
-  // Render 20-Day Close Sparkline EChart
   const chartDom = document.getElementById("modal-sparkline-chart");
   if (!state.charts.sparkline) {
     state.charts.sparkline = echarts.init(chartDom, null, { renderer: "canvas" });
@@ -1239,7 +1602,8 @@ function openStockDetailModal(ticker) {
 
   const pal = getPalette();
   const prices = stock.sparkline_20d || [];
-  const isTrendUp = prices.length >= 2 ? prices[prices.length - 1] >= prices[0] : true;
+  const isTrendUp =
+    prices.length >= 2 ? prices[prices.length - 1] >= prices[0] : true;
   const lineColor = isTrendUp ? pal.up.main : pal.down.main;
 
   state.charts.sparkline.setOption(
@@ -1261,7 +1625,9 @@ function openStockDetailModal(ticker) {
       yAxis: {
         type: "value",
         scale: true,
-        splitLine: { lineStyle: { color: "rgba(51, 65, 85, 0.35)", type: "dashed" } },
+        splitLine: {
+          lineStyle: { color: "rgba(51, 65, 85, 0.35)", type: "dashed" },
+        },
         axisLabel: {
           color: "#94a3b8",
           fontSize: 10.5,
@@ -1270,7 +1636,7 @@ function openStockDetailModal(ticker) {
       },
       series: [
         {
-          name: "收盘价",
+          name: t("modalCloseSeries"),
           type: "line",
           smooth: 0.25,
           data: prices,
@@ -1295,25 +1661,26 @@ function openStockDetailModal(ticker) {
    ========================================================================== */
 
 function bindEvents() {
-  // Universe selector
   document.getElementById("universe-select").addEventListener("change", (e) => {
     state.universeId = e.target.value;
     state.treemapSector = "ALL";
     loadDashboard(false);
   });
 
-  // Color Mode Toggle (US <-> CN)
   document.getElementById("btn-color-mode").addEventListener("click", () => {
     state.colorMode = state.colorMode === "us" ? "cn" : "us";
     renderAll();
   });
 
-  // Force Refresh Button
+  document.getElementById("btn-lang-toggle").addEventListener("click", () => {
+    state.lang = state.lang === "en" ? "zh" : "en";
+    renderAll();
+  });
+
   document.getElementById("btn-refresh").addEventListener("click", () => {
     loadDashboard(true);
   });
 
-  // Treemap sector filter & reset
   document
     .getElementById("treemap-sector-filter")
     .addEventListener("change", (e) => {
@@ -1327,7 +1694,6 @@ function bindEvents() {
     renderTreemap();
   });
 
-  // Gainers / Losers view mode toggle
   document.querySelectorAll("[data-gl-mode]").forEach((btn) => {
     btn.addEventListener("click", () => {
       document
@@ -1339,7 +1705,6 @@ function bindEvents() {
     });
   });
 
-  // Volume Scatter quadrant filter pills
   document.querySelectorAll("[data-scatter-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
       document
@@ -1351,7 +1716,6 @@ function bindEvents() {
     });
   });
 
-  // Table search & regime filter & column sorting
   document
     .getElementById("table-search-input")
     .addEventListener("input", (e) => {
@@ -1380,14 +1744,12 @@ function bindEvents() {
     });
   });
 
-  // Stock Detail Modal close
   document
     .getElementById("btn-close-stock-modal")
     .addEventListener("click", () => {
       document.getElementById("stock-detail-modal").classList.remove("open");
     });
 
-  // Custom Watchlist Modal
   document
     .getElementById("btn-edit-watchlist")
     .addEventListener("click", () => {
@@ -1438,25 +1800,28 @@ function bindEvents() {
       }
     });
 
-  // Plugins Modal
   document.getElementById("btn-plugins").addEventListener("click", () => {
     const plugins = state.dashboardData?.plugins || [];
     const listEl = document.getElementById("plugins-list-container");
     listEl.innerHTML = plugins
-      .map(
-        (p) => `
-        <div class="ribbon-card" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="font-weight:700; color:#f8fafc;">${p.name}</div>
-            <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">${p.description}</div>
+      .map((p) => {
+        const pName = isZh() ? p.name_zh || p.name : p.name_en || p.name;
+        const pDesc = isZh()
+          ? p.description_zh || p.description
+          : p.description_en || p.description;
+        return `
+          <div class="ribbon-card" style="display:flex; flex-direction:row; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:700; color:#f8fafc;">${pName}</div>
+              <div style="font-size:11.5px; color:var(--text-secondary); margin-top:2px;">${pDesc}</div>
+            </div>
+            <div style="text-align:right;">
+              <span class="brand-tag font-mono-num">${p.id}</span>
+              <div class="font-mono-num" style="font-size:10.5px; color:#10b981; margin-top:4px;">v${p.version} · ACTIVE</div>
+            </div>
           </div>
-          <div style="text-align:right;">
-            <span class="brand-tag font-mono-num">${p.id}</span>
-            <div class="font-mono-num" style="font-size:10.5px; color:#10b981; margin-top:4px;">v${p.version} · ACTIVE</div>
-          </div>
-        </div>
-      `
-      )
+        `;
+      })
       .join("");
     document.getElementById("plugins-modal").classList.add("open");
   });
@@ -1467,7 +1832,6 @@ function bindEvents() {
       document.getElementById("plugins-modal").classList.remove("open");
     });
 
-  // Close modals when clicking backdrop
   document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
     backdrop.addEventListener("click", (e) => {
       if (e.target === backdrop) {
@@ -1476,7 +1840,6 @@ function bindEvents() {
     });
   });
 
-  // Window resize responsiveness for all ECharts instances
   window.addEventListener("resize", () => {
     Object.values(state.charts).forEach((chart) => {
       if (chart) chart.resize();
@@ -1485,6 +1848,7 @@ function bindEvents() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  applyStaticTranslations();
   updateThemeUI();
   bindEvents();
   loadDashboard(false);

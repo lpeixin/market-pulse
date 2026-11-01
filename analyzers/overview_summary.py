@@ -17,7 +17,11 @@ from analyzers.base import AnalyzerRegistry, BaseAnalyzer
 class OverviewSummaryAnalyzer(BaseAnalyzer):
     plugin_id = "overview_summary"
     plugin_name = "全市场宽度与核心指标 (Market Breadth & KPI)"
+    plugin_name_zh = "全市场宽度与核心指标 (Market Breadth & KPI)"
+    plugin_name_en = "Market Breadth & Core KPIs"
     plugin_description = "计算股票池涨跌家数比、市值加权涨跌幅、总成交额与行业板块强弱排序"
+    plugin_description_zh = "计算股票池涨跌家数比、市值加权涨跌幅、总成交额与行业板块强弱排序"
+    plugin_description_en = "Computes advance/decline breadth, cap-weighted returns, total turnover, and sector rankings"
     version = "1.0.0"
 
     def analyze(self, df: pd.DataFrame, records: List[Dict[str, Any]]) -> Dict[str, Any]:

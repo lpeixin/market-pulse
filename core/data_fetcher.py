@@ -128,7 +128,11 @@ class MarketDataFetcher:
                 {
                     "id": uid,
                     "name": udata.get("name", uid),
+                    "name_zh": udata.get("name_zh", udata.get("name", uid)),
+                    "name_en": udata.get("name_en", udata.get("name", uid)),
                     "description": udata.get("description", ""),
+                    "description_zh": udata.get("description_zh", udata.get("description", "")),
+                    "description_en": udata.get("description_en", udata.get("description", "")),
                     "count": len(udata.get("tickers", [])),
                     "tickers": udata.get("tickers", []),
                 }
@@ -174,22 +178,27 @@ class MarketDataFetcher:
         if weekday >= 5:
             session_code = "WEEKEND_CLOSED"
             session_label = "周末休市 · 已回溯最近交易日收盘"
+            session_label_en = "Weekend Closed · Rolled Back to Last Close"
             is_intraday = False
         elif market_open <= current_time < market_close:
             session_code = "INTRADAY"
             session_label = "美股盘中交易 · 实时行情快照"
+            session_label_en = "US Market Open · Live Intraday Snapshot"
             is_intraday = True
         elif pre_open <= current_time < market_open:
             session_code = "PRE_MARKET"
             session_label = "美股盘前时段 · 已回溯最近交易日收盘"
+            session_label_en = "Pre-Market · Rolled Back to Previous Close"
             is_intraday = False
         elif market_close <= current_time < after_close:
             session_code = "AFTER_HOURS"
             session_label = "美股盘后时段 · 当日收盘快照"
+            session_label_en = "After-Hours · Today's Closing Snapshot"
             is_intraday = False
         else:
             session_code = "OVERNIGHT_CLOSED"
             session_label = "美股夜间休市 · 已回溯最近交易日收盘"
+            session_label_en = "Overnight Closed · Rolled Back to Last Close"
             is_intraday = False
 
         # Candidate calendar date before holiday verification
@@ -215,12 +224,15 @@ class MarketDataFetcher:
         ):
             session_code = "HOLIDAY_CLOSED"
             session_label = "美股节假日休市 · 已回溯最近交易日收盘"
+            session_label_en = "Market Holiday · Rolled Back to Last Close"
             is_intraday = False
 
         return {
             "trading_date": effective_date,
             "session_code": session_code,
             "session_label": session_label,
+            "session_label_zh": session_label,
+            "session_label_en": session_label_en,
             "is_intraday": is_intraday,
             "et_time": now_et.strftime("%Y-%m-%d %H:%M:%S ET"),
             "local_time": now_local.strftime("%Y-%m-%d %H:%M:%S"),
@@ -338,7 +350,15 @@ class MarketDataFetcher:
         if not force_refresh:
             cached = self.cache.get_indices(trading_date, idx_tickers)
             if len(cached) == len(idx_tickers):
-                return [cached[t] for t in idx_tickers if t in cached]
+                out = []
+                for item in indices_cfg:
+                    t = item["ticker"]
+                    if t in cached:
+                        rec = dict(cached[t])
+                        rec["name_en"] = item.get("name_en", item.get("name", t))
+                        rec["name_zh"] = item.get("name_zh", item.get("name", t))
+                        out.append(rec)
+                return out
 
         try:
             raw_df = yf.download(
@@ -368,6 +388,8 @@ class MarketDataFetcher:
                     {
                         "ticker": sym,
                         "name": item.get("name", sym),
+                        "name_en": item.get("name_en", item.get("name", sym)),
+                        "name_zh": item.get("name_zh", item.get("name", sym)),
                         "short_name": item.get("short_name", sym),
                         "price": round(price, 2),
                         "prev_close": round(prev_close, 2),

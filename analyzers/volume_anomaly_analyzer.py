@@ -20,7 +20,11 @@ from analyzers.base import AnalyzerRegistry, BaseAnalyzer
 class VolumeAnomalyScatterAnalyzer(BaseAnalyzer):
     plugin_id = "volume_anomaly_scatter"
     plugin_name = "量价异动雷达 (Volume Anomaly vs. Return)"
+    plugin_name_zh = "量价异动雷达 (Volume Anomaly vs. Return)"
+    plugin_name_en = "Volume Anomaly vs. Return Radar"
     plugin_description = "X轴涨跌幅 vs Y轴相对成交量比率(RVOL)，1.5x 阈值捕捉放量突破与放量杀跌"
+    plugin_description_zh = "X轴涨跌幅 vs Y轴相对成交量比率(RVOL)，1.5x 阈值捕捉放量突破与放量杀跌"
+    plugin_description_en = "X-axis Return (%) vs Y-axis Relative Volume (RVOL) with 1.5x anomaly threshold for breakouts & selloffs"
     version = "1.0.0"
 
     RVOL_THRESHOLD = 1.5
@@ -58,18 +62,22 @@ class VolumeAnomalyScatterAnalyzer(BaseAnalyzer):
             if rvol >= self.RVOL_THRESHOLD and chg >= 0:
                 quadrant = "BREAKOUT_SURGE"
                 quadrant_label = "放量突破 (RVOL ≥ 1.5x)"
+                quadrant_label_en = "Breakout Surge (RVOL ≥ 1.5x)"
                 quadrant_counts["breakout_surge"] += 1
             elif rvol >= self.RVOL_THRESHOLD and chg < 0:
                 quadrant = "HEAVY_SELLOFF"
                 quadrant_label = "放量杀跌 (RVOL ≥ 1.5x)"
+                quadrant_label_en = "Heavy Selloff (RVOL ≥ 1.5x)"
                 quadrant_counts["heavy_selloff"] += 1
             elif chg >= 0:
                 quadrant = "QUIET_ADVANCE"
-                quadrant_label = "常温和上涨"
+                quadrant_label = "温和上涨"
+                quadrant_label_en = "Normal Advance"
                 quadrant_counts["quiet_advance"] += 1
             else:
                 quadrant = "QUIET_PULLBACK"
                 quadrant_label = "缩量/常规回调"
+                quadrant_label_en = "Normal Pullback"
                 quadrant_counts["quiet_pullback"] += 1
 
             # Compute normalized visual bubble size (12px .. 46px) using sqrt of Market Cap
@@ -101,6 +109,8 @@ class VolumeAnomalyScatterAnalyzer(BaseAnalyzer):
                     "symbol_size": symbol_size,
                     "quadrant": quadrant,
                     "quadrant_label": quadrant_label,
+                    "quadrant_label_zh": quadrant_label,
+                    "quadrant_label_en": quadrant_label_en,
                     "is_anomaly": rvol >= self.RVOL_THRESHOLD,
                 }
             )

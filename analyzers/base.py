@@ -17,7 +17,11 @@ class BaseAnalyzer(ABC):
 
     plugin_id: str = "base"
     plugin_name: str = "Base Analyzer"
+    plugin_name_en: str = "Base Analyzer"
+    plugin_name_zh: str = "基础分析器"
     plugin_description: str = ""
+    plugin_description_en: str = ""
+    plugin_description_zh: str = ""
     version: str = "1.0.0"
 
     @abstractmethod
@@ -45,7 +49,15 @@ class AnalyzerRegistry:
             {
                 "id": a_cls.plugin_id,
                 "name": a_cls.plugin_name,
+                "name_en": getattr(a_cls, "plugin_name_en", a_cls.plugin_name),
+                "name_zh": getattr(a_cls, "plugin_name_zh", a_cls.plugin_name),
                 "description": a_cls.plugin_description,
+                "description_en": getattr(
+                    a_cls, "plugin_description_en", a_cls.plugin_description
+                ),
+                "description_zh": getattr(
+                    a_cls, "plugin_description_zh", a_cls.plugin_description
+                ),
                 "version": a_cls.version,
             }
             for a_cls in cls._registry.values()

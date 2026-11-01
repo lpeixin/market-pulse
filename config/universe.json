@@ -1,11 +1,11 @@
 {
   "default_universe": "sp500_core",
   "indices": [
-    {"ticker": "^GSPC", "name": "S&P 500", "short_name": "SPX"},
-    {"ticker": "^IXIC", "name": "NASDAQ Composite", "short_name": "IXIC"},
-    {"ticker": "^DJI", "name": "Dow Jones", "short_name": "DJI"},
-    {"ticker": "^RUT", "name": "Russell 2000", "short_name": "RUT"},
-    {"ticker": "^VIX", "name": "CBOE Volatility", "short_name": "VIX"}
+    {"ticker": "^GSPC", "name": "S&P 500", "name_en": "S&P 500", "name_zh": "标普 500", "short_name": "SPX"},
+    {"ticker": "^IXIC", "name": "NASDAQ Composite", "name_en": "NASDAQ Composite", "name_zh": "纳斯达克综合", "short_name": "IXIC"},
+    {"ticker": "^DJI", "name": "Dow Jones", "name_en": "Dow Jones", "name_zh": "道琼斯工业", "short_name": "DJI"},
+    {"ticker": "^RUT", "name": "Russell 2000", "name_en": "Russell 2000", "name_zh": "罗素 2000", "short_name": "RUT"},
+    {"ticker": "^VIX", "name": "CBOE Volatility", "name_en": "CBOE Volatility", "name_zh": "VIX 恐慌指数", "short_name": "VIX"}
   ],
   "sector_meta": {
     "Information Technology": {"cn_name": "信息技术", "order": 1},
@@ -82,7 +82,11 @@
     "sp500_core": {
       "id": "sp500_core",
       "name": "S&P 500 核心权重 (全行业 50 标杆)",
+      "name_zh": "S&P 500 核心权重 (全行业 50 标杆)",
+      "name_en": "S&P 500 Core Leaders (All 11 Sectors)",
       "description": "覆盖标普 500 全部 11 个 GICS 一级行业的核心龙头权重股",
+      "description_zh": "覆盖标普 500 全部 11 个 GICS 一级行业的核心龙头权重股",
+      "description_en": "50 flagship S&P 500 constituents spanning all 11 GICS sectors",
       "tickers": [
         "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "PLTR",
         "GOOGL", "META", "NFLX", "DIS", "TMUS",
@@ -100,7 +104,11 @@
     "nasdaq_core": {
       "id": "nasdaq_core",
       "name": "纳指核心 (NASDAQ-100 科技与成长)",
+      "name_zh": "纳指核心 (NASDAQ-100 科技与成长)",
+      "name_en": "NASDAQ-100 Core Tech & Growth",
       "description": "聚焦纳斯达克 100 指数核心算力、半导体、互联网与生物科技龙头",
+      "description_zh": "聚焦纳斯达克 100 指数核心算力、半导体、互联网与生物科技龙头",
+      "description_en": "Core NASDAQ-100 leaders in AI compute, semiconductors, cloud & biotech",
       "tickers": [
         "AAPL", "MSFT", "NVDA", "AVGO", "AMD", "ADBE", "CSCO", "PLTR", "MU", "INTC", "QCOM", "PANW",
         "GOOGL", "META", "NFLX", "TMUS",
@@ -111,7 +119,11 @@
     "mega_tech": {
       "id": "mega_tech",
       "name": "核心科技巨头 (Mag-7 & AI 算力核心)",
+      "name_zh": "核心科技巨头 (Mag-7 & AI 算力核心)",
+      "name_en": "Mega-Cap Tech (Mag-7 & AI Infrastructure)",
       "description": "美股七巨头 (Magnificent 7) 及 AI 基础设施核心标的",
+      "description_zh": "美股七巨头 (Magnificent 7) 及 AI 基础设施核心标的",
+      "description_en": "Magnificent 7 and flagship AI compute & cloud infrastructure equities",
       "tickers": [
         "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA",
         "AVGO", "ORCL", "AMD", "PLTR", "NFLX", "CRM", "MU", "PANW", "CEG"
@@ -120,7 +132,11 @@
     "custom_watchlist": {
       "id": "custom_watchlist",
       "name": "自定义观察池 (Custom Alpha Pool)",
+      "name_zh": "自定义观察池 (Custom Alpha Pool)",
+      "name_en": "Custom Watchlist (Alpha Pool)",
       "description": "高弹性跨行业热门观察标的，支持在界面中动态增删 Ticker",
+      "description_zh": "高弹性跨行业热门观察标的，支持在界面中动态增删 Ticker",
+      "description_en": "Customizable cross-sector alpha watchlist with live ticker editing",
       "tickers": [
         "NVDA", "TSLA", "PLTR", "META", "AMD", "AVGO", "NFLX",
         "LLY", "JPM", "GS", "GE", "UBER", "COST", "XOM", "CEG"

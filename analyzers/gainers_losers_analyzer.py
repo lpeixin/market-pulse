@@ -17,7 +17,11 @@ from analyzers.base import AnalyzerRegistry, BaseAnalyzer
 class TopGainersLosersAnalyzer(BaseAnalyzer):
     plugin_id = "top_gainers_losers"
     plugin_name = "多空涨跌幅龙虎榜 (Top 10 Gainers & Losers)"
+    plugin_name_zh = "多空涨跌幅龙虎榜 (Top 10 Gainers & Losers)"
+    plugin_name_en = "Top 10 Gainers & Losers Ranking"
     plugin_description = "双向水平条形图同屏对比涨幅前 10 与跌幅前 10 标的，含日内振幅与成交额"
+    plugin_description_zh = "双向水平条形图同屏对比涨幅前 10 与跌幅前 10 标的，含日内振幅与成交额"
+    plugin_description_en = "Bidirectional horizontal bar chart contrasting Top 10 Gainers vs Losers with intraday range & turnover"
     version = "1.0.0"
 
     def analyze(self, df: pd.DataFrame, records: List[Dict[str, Any]]) -> Dict[str, Any]:

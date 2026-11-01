@@ -17,7 +17,11 @@ from analyzers.base import AnalyzerRegistry, BaseAnalyzer
 class MarketCapTreemapAnalyzer(BaseAnalyzer):
     plugin_id = "market_cap_treemap"
     plugin_name = "大盘市值热力图 (Market Cap Treemap)"
+    plugin_name_zh = "大盘市值热力图 (Market Cap Treemap)"
+    plugin_name_en = "Market Cap Treemap"
     plugin_description = "按 GICS 行业 -> 个股两级嵌套，面积严格映射市值，色阶映射涨跌幅"
+    plugin_description_zh = "按 GICS 行业 -> 个股两级嵌套，面积严格映射市值，色阶映射涨跌幅"
+    plugin_description_en = "Two-level GICS Sector -> Stock hierarchy mapping area to Market Cap and color to Daily Return (%)"
     version = "1.0.0"
 
     def analyze(self, df: pd.DataFrame, records: List[Dict[str, Any]]) -> Dict[str, Any]:

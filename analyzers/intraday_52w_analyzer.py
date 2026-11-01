@@ -18,7 +18,11 @@ from analyzers.base import AnalyzerRegistry, BaseAnalyzer
 class Intraday52WTableAnalyzer(BaseAnalyzer):
     plugin_id = "intraday_52w_table"
     plugin_name = "日内多空博弈与 52 周水位表 (Intraday Range & 52W Drawdown)"
+    plugin_name_zh = "日内多空博弈与 52 周水位表 (Intraday Range & 52W Drawdown)"
+    plugin_name_en = "Intraday Range & 52W Drawdown Water-Level Table"
     plugin_description = "包含日内价格位置条 (Low-Close-High) 与距离 52 周高点回撤幅度进度条"
+    plugin_description_zh = "包含日内价格位置条 (Low-Close-High) 与距离 52 周高点回撤幅度进度条"
+    plugin_description_en = "Visualizes intraday price position bars (Low-Close-High) and 52-week high drawdown progress bars"
     version = "1.0.0"
 
     def analyze(self, df: pd.DataFrame, records: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -45,15 +49,19 @@ class Intraday52WTableAnalyzer(BaseAnalyzer):
             if dd_52w >= -3.0:
                 regime_52w = "NEAR_ATH"
                 regime_label = "逼近新高"
+                regime_label_en = "Near 52W High"
             elif dd_52w >= -10.0:
                 regime_52w = "HEALTHY"
                 regime_label = "强势区间"
+                regime_label_en = "Healthy Zone"
             elif dd_52w >= -20.0:
                 regime_52w = "CORRECTION"
                 regime_label = "技术回调"
+                regime_label_en = "Correction"
             else:
                 regime_52w = "DEEP_DRAWDOWN"
                 regime_label = "深度回撤"
+                regime_label_en = "Deep Drawdown"
 
             rows.append(
                 {
@@ -86,6 +94,8 @@ class Intraday52WTableAnalyzer(BaseAnalyzer):
                     "pos_52w_pct": float(row["pos_52w_pct"]),
                     "regime_52w": regime_52w,
                     "regime_label": regime_label,
+                    "regime_label_zh": regime_label,
+                    "regime_label_en": regime_label_en,
                     "sparkline_20d": row.get("sparkline_20d", []),
                 }
             )

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 340" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#060a11"/>
+      <stop offset="55%" stop-color="#0c1322"/>
+      <stop offset="100%" stop-color="#09101d"/>
+    </linearGradient>
+
+    <linearGradient id="cyanGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0ea5e9" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </linearGradient>
+
+    <linearGradient id="pulseFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <linearGradient id="brandIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+
+    <pattern id="terminalGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="0.6" stroke-opacity="0.45"/>
+    </pattern>
+
+    <pattern id="subGrid" width="200" height="200" patternUnits="userSpaceOnUse">
+      <path d="M 200 0 L 0 0 0 200" fill="none" stroke="#334155" stroke-width="0.9" stroke-opacity="0.4"/>
+    </pattern>
+  </defs>
+
+  <!-- Base Dark Terminal Background -->
+  <rect width="1280" height="340" rx="14" fill="url(#bgGrad)"/>
+  <rect width="1280" height="340" rx="14" fill="url(#terminalGrid)"/>
+  <rect width="1280" height="340" rx="14" fill="url(#subGrid)"/>
+
+  <!-- Subtle Radial Ambient Light -->
+  <circle cx="1020" cy="170" r="260" fill="#0ea5e9" fill-opacity="0.05"/>
+  <circle cx="880" cy="210" r="180" fill="#10b981" fill-opacity="0.04"/>
+
+  <!-- Right-Side Quantitative Visual Graphic (Treemap + RVOL Scatter + Price Curve) -->
+  <g transform="translate(760, 36)">
+    <!-- Terminal Mini-Window Frame -->
+    <rect x="0" y="0" width="476" height="268" rx="10" fill="#0b111e" fill-opacity="0.88" stroke="#1e293b" stroke-width="1.5"/>
+    <rect x="0" y="0" width="476" height="28" rx="10" fill="#131c2e"/>
+    <circle cx="16" cy="14" r="4.5" fill="#f43f5e" fill-opacity="0.8"/>
+    <circle cx="30" cy="14" r="4.5" fill="#f59e0b" fill-opacity="0.8"/>
+    <circle cx="44" cy="14" r="4.5" fill="#10b981" fill-opacity="0.8"/>
+    <text x="64" y="18" fill="#64748b" font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="10" font-weight="600">MARKET_CAP_TREEMAP // RVOL_RADAR [US_EQUITY_ENGINE]</text>
+    <text x="412" y="18" fill="#10b981" font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="10" font-weight="700">● LIVE</text>
+
+    <!-- Mini Treemap Blocks (Left Half of Graphic) -->
+    <g transform="translate(14, 40)">
+      <rect x="0" y="0" width="118" height="92" rx="4" fill="#065f46" fill-opacity="0.75" stroke="#10b981" stroke-width="1" stroke-opacity="0.5"/>
+      <text x="10" y="22" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="13" font-weight="800">AAPL</text>
+      <text x="10" y="38" fill="#34d399" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">+2.14%</text>
+      <text x="10" y="80" fill="#94a3b8" font-family="JetBrains Mono, monospace" font-size="9.5">$5.03T</text>
+
+      <rect x="124" y="0" width="96" height="92" rx="4" fill="#881337" fill-opacity="0.72" stroke="#f43f5e" stroke-width="1" stroke-opacity="0.5"/>
+      <text x="134" y="22" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="13" font-weight="800">NVDA</text>
+      <text x="134" y="38" fill="#fb7185" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">-4.22%</text>
+      <text x="134" y="80" fill="#94a3b8" font-family="JetBrains Mono, monospace" font-size="9.5">$4.94T</text>
+
+      <rect x="0" y="98" width="76" height="68" rx="4" fill="#064e3b" fill-opacity="0.7" stroke="#10b981" stroke-width="0.8" stroke-opacity="0.4"/>
+      <text x="8" y="116" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">MSFT</text>
+      <text x="8" y="131" fill="#34d399" font-family="JetBrains Mono, monospace" font-size="10">+1.55%</text>
+
+      <rect x="82" y="98" width="70" height="68" rx="4" fill="#065f46" fill-opacity="0.85" stroke="#34d399" stroke-width="0.8" stroke-opacity="0.5"/>
+      <text x="90" y="116" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">TMUS</text>
+      <text x="90" y="131" fill="#34d399" font-family="JetBrains Mono, monospace" font-size="10">+6.21%</text>
+
+      <rect x="158" y="98" width="62" height="68" rx="4" fill="#4c0519" fill-opacity="0.8" stroke="#f43f5e" stroke-width="0.8" stroke-opacity="0.4"/>
+      <text x="166" y="116" fill="#ffffff" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700">AMD</text>
+      <text x="166" y="131" fill="#fb7185" font-family="JetBrains Mono, monospace" font-size="10">-5.48%</text>
+    </g>
+
+    <!-- Mini RVOL Anomaly & Equity Curve Panel (Right Half of Graphic) -->
+    <g transform="translate(246, 40)">
+      <rect x="0" y="0" width="216" height="166" rx="5" fill="#090e19" stroke="#1e293b" stroke-width="1"/>
+      <!-- RVOL = 1.5x Threshold Dashed Line -->
+      <line x1="12" y1="62" x2="204" y2="62" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,4"/>
+      <text x="128" y="55" fill="#f59e0b" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="700">RVOL = 1.5x</text>
+
+      <!-- Area Curve -->
+      <path d="M 14 138 L 38 126 L 62 131 L 86 110 L 110 116 L 134 88 L 158 92 L 182 54 L 202 38 L 202 154 L 14 154 Z" fill="url(#pulseFill)"/>
+      <path d="M 14 138 L 38 126 L 62 131 L 86 110 L 110 116 L 134 88 L 158 92 L 182 54 L 202 38" fill="none" stroke="#10b981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Scatter Anomaly Nodes -->
+      <circle cx="182" cy="54" r="6" fill="#10b981" fill-opacity="0.3" stroke="#34d399" stroke-width="1.8"/>
+      <circle cx="202" cy="38" r="8" fill="#10b981" fill-opacity="0.35" stroke="#34d399" stroke-width="2"/>
+      <circle cx="52" cy="46" r="7" fill="#f43f5e" fill-opacity="0.3" stroke="#fb7185" stroke-width="1.8"/>
+      <circle cx="134" cy="88" r="5" fill="#38bdf8" fill-opacity="0.3" stroke="#38bdf8" stroke-width="1.5"/>
+    </g>
+
+    <!-- Bottom Intraday & 52W Water-Level Progress Bars -->
+    <g transform="translate(14, 218)">
+      <rect x="0" y="0" width="448" height="36" rx="5" fill="#090e19" stroke="#1e293b" stroke-width="1"/>
+      <text x="12" y="15" fill="#94a3b8" font-family="JetBrains Mono, monospace" font-size="9.5">INTRADAY POS (L-C-H)</text>
+      <rect x="135" y="9" width="95" height="6" rx="3" fill="#1e293b"/>
+      <rect x="155" y="9" width="52" height="6" rx="3" fill="#10b981"/>
+      <rect x="205" y="7" width="3" height="10" rx="1" fill="#ffffff"/>
+
+      <text x="248" y="15" fill="#94a3b8" font-family="JetBrains Mono, monospace" font-size="9.5">52W HIGH DD%</text>
+      <rect x="332" y="9" width="102" height="6" rx="3" fill="#1e293b"/>
+      <rect x="332" y="9" width="68" height="6" rx="3" fill="#38bdf8"/>
+
+      <text x="12" y="29" fill="#64748b" font-family="JetBrains Mono, monospace" font-size="8.5">CACHE: SQLITE_HIT (1.48ms)  |  UNIVERSE: S&amp;P 500 CORE (50)  |  ANALYZERS: 5 ACTIVE</text>
+    </g>
+  </g>
+
+  <!-- Left-Side Brand Identity & Architecture Typography -->
+  <g transform="translate(52, 54)">
+    <!-- Top Tag Pill -->
+    <rect x="0" y="0" width="286" height="24" rx="5" fill="#0ea5e9" fill-opacity="0.12" stroke="#38bdf8" stroke-width="1" stroke-opacity="0.35"/>
+    <circle cx="14" cy="12" r="3.5" fill="#38bdf8"/>
+    <text x="26" y="16" fill="#38bdf8" font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="10.5" font-weight="700" letter-spacing="1.2">QUANTITATIVE VISUAL TERMINAL V1.0</text>
+
+    <!-- Main Logo & Title -->
+    <g transform="translate(0, 44)">
+      <rect x="0" y="2" width="48" height="48" rx="11" fill="url(#brandIconGrad)"/>
+      <polyline points="9,26 17,26 22,38 29,14 34,26 40,26" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="64" y="39" fill="#ffffff" font-family="-apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif" font-size="44" font-weight="900" letter-spacing="-1">MarketPulse</text>
+    </g>
+
+    <!-- Bilingual Subtitle -->
+    <text x="0" y="128" fill="#e2e8f0" font-family="-apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif" font-size="16.5" font-weight="600">
+      Cross-Platform US Equity Quantitative Visualization Terminal
+    </text>
+    <text x="0" y="154" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500">
+      跨平台美股多维行情可视化终端 · 智能交易日回溯 · 本地 SQLite 毫秒级缓存 · 模块化插件架构
+    </text>
+
+    <!-- Accent Divider Line -->
+    <rect x="0" y="174" width="620" height="1.5" fill="url(#cyanGlow)"/>
+
+    <!-- Tech Stack Badges -->
+    <g transform="translate(0, 196)" font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="11" font-weight="700">
+      <rect x="0" y="0" width="112" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="14" y="18" fill="#38bdf8">Python + Pandas</text>
+
+      <rect x="122" y="0" width="136" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="136" y="18" fill="#10b981">yfinance + SQLite</text>
+
+      <rect x="268" y="0" width="92" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="284" y="18" fill="#f59e0b">FastAPI</text>
+
+      <rect x="370" y="0" width="98" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="386" y="18" fill="#fb7185">ECharts 5</text>
+
+      <rect x="478" y="0" width="110" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="494" y="18" fill="#a855f7">PyWebView</text>
+
+      <rect x="598" y="0" width="84" height="28" rx="5" fill="#111827" stroke="#334155" stroke-width="1"/>
+      <text x="613" y="18" fill="#e2e8f0">EN / 中文</text>
+    </g>
+  </g>
+
+  <!-- Outer Subtle Border -->
+  <rect x="0.75" y="0.75" width="1278.5" height="338.5" rx="13.5" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+</svg>
