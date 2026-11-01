@@ -1,0 +1,130 @@
+{
+  "default_universe": "sp500_core",
+  "indices": [
+    {"ticker": "^GSPC", "name": "S&P 500", "short_name": "SPX"},
+    {"ticker": "^IXIC", "name": "NASDAQ Composite", "short_name": "IXIC"},
+    {"ticker": "^DJI", "name": "Dow Jones", "short_name": "DJI"},
+    {"ticker": "^RUT", "name": "Russell 2000", "short_name": "RUT"},
+    {"ticker": "^VIX", "name": "CBOE Volatility", "short_name": "VIX"}
+  ],
+  "sector_meta": {
+    "Information Technology": {"cn_name": "信息技术", "order": 1},
+    "Communication Services": {"cn_name": "通信服务", "order": 2},
+    "Consumer Discretionary": {"cn_name": "可选消费", "order": 3},
+    "Financials": {"cn_name": "金融", "order": 4},
+    "Health Care": {"cn_name": "医疗保健", "order": 5},
+    "Industrials": {"cn_name": "工业", "order": 6},
+    "Consumer Staples": {"cn_name": "日常消费", "order": 7},
+    "Energy": {"cn_name": "能源", "order": 8},
+    "Utilities": {"cn_name": "公用事业", "order": 9},
+    "Real Estate": {"cn_name": "房地产", "order": 10},
+    "Materials": {"cn_name": "原材料", "order": 11}
+  },
+  "stocks": {
+    "AAPL": {"name": "Apple Inc.", "cn_name": "苹果", "sector": "Information Technology"},
+    "MSFT": {"name": "Microsoft Corp.", "cn_name": "微软", "sector": "Information Technology"},
+    "NVDA": {"name": "NVIDIA Corp.", "cn_name": "英伟达", "sector": "Information Technology"},
+    "AVGO": {"name": "Broadcom Inc.", "cn_name": "博通", "sector": "Information Technology"},
+    "ORCL": {"name": "Oracle Corp.", "cn_name": "甲骨文", "sector": "Information Technology"},
+    "CRM": {"name": "Salesforce Inc.", "cn_name": "赛富时", "sector": "Information Technology"},
+    "AMD": {"name": "Advanced Micro Devices", "cn_name": "超威半导体", "sector": "Information Technology"},
+    "ADBE": {"name": "Adobe Inc.", "cn_name": "奥多比", "sector": "Information Technology"},
+    "CSCO": {"name": "Cisco Systems", "cn_name": "思科", "sector": "Information Technology"},
+    "PLTR": {"name": "Palantir Technologies", "cn_name": "Palantir", "sector": "Information Technology"},
+    "MU": {"name": "Micron Technology", "cn_name": "美光科技", "sector": "Information Technology"},
+    "INTC": {"name": "Intel Corp.", "cn_name": "英特尔", "sector": "Information Technology"},
+    "QCOM": {"name": "Qualcomm Inc.", "cn_name": "高通", "sector": "Information Technology"},
+    "PANW": {"name": "Palo Alto Networks", "cn_name": "派拓网络", "sector": "Information Technology"},
+    "GOOGL": {"name": "Alphabet Inc.", "cn_name": "谷歌", "sector": "Communication Services"},
+    "META": {"name": "Meta Platforms Inc.", "cn_name": "Meta", "sector": "Communication Services"},
+    "NFLX": {"name": "Netflix Inc.", "cn_name": "奈飞", "sector": "Communication Services"},
+    "DIS": {"name": "Walt Disney Co.", "cn_name": "迪士尼", "sector": "Communication Services"},
+    "TMUS": {"name": "T-Mobile US Inc.", "cn_name": "T-Mobile", "sector": "Communication Services"},
+    "AMZN": {"name": "Amazon.com Inc.", "cn_name": "亚马逊", "sector": "Consumer Discretionary"},
+    "TSLA": {"name": "Tesla Inc.", "cn_name": "特斯拉", "sector": "Consumer Discretionary"},
+    "HD": {"name": "Home Depot Inc.", "cn_name": "家得宝", "sector": "Consumer Discretionary"},
+    "MCD": {"name": "McDonald's Corp.", "cn_name": "麦当劳", "sector": "Consumer Discretionary"},
+    "BKNG": {"name": "Booking Holdings", "cn_name": "Booking", "sector": "Consumer Discretionary"},
+    "NKE": {"name": "NIKE Inc.", "cn_name": "耐克", "sector": "Consumer Discretionary"},
+    "BRK-B": {"name": "Berkshire Hathaway", "cn_name": "伯克希尔", "sector": "Financials"},
+    "JPM": {"name": "JPMorgan Chase & Co.", "cn_name": "摩根大通", "sector": "Financials"},
+    "V": {"name": "Visa Inc.", "cn_name": "维萨", "sector": "Financials"},
+    "MA": {"name": "Mastercard Inc.", "cn_name": "万事达", "sector": "Financials"},
+    "GS": {"name": "Goldman Sachs Group", "cn_name": "高盛", "sector": "Financials"},
+    "BAC": {"name": "Bank of America", "cn_name": "美国银行", "sector": "Financials"},
+    "BLK": {"name": "BlackRock Inc.", "cn_name": "贝莱德", "sector": "Financials"},
+    "LLY": {"name": "Eli Lilly and Co.", "cn_name": "礼来", "sector": "Health Care"},
+    "UNH": {"name": "UnitedHealth Group", "cn_name": "联合健康", "sector": "Health Care"},
+    "JNJ": {"name": "Johnson & Johnson", "cn_name": "强生", "sector": "Health Care"},
+    "ABBV": {"name": "AbbVie Inc.", "cn_name": "艾伯维", "sector": "Health Care"},
+    "MRK": {"name": "Merck & Co. Inc.", "cn_name": "默沙东", "sector": "Health Care"},
+    "ISRG": {"name": "Intuitive Surgical", "cn_name": "直觉外科", "sector": "Health Care"},
+    "GE": {"name": "GE Aerospace", "cn_name": "通用电气航空", "sector": "Industrials"},
+    "CAT": {"name": "Caterpillar Inc.", "cn_name": "卡特彼勒", "sector": "Industrials"},
+    "RTX": {"name": "RTX Corp.", "cn_name": "雷神技术", "sector": "Industrials"},
+    "UBER": {"name": "Uber Technologies", "cn_name": "优步", "sector": "Industrials"},
+    "UNP": {"name": "Union Pacific Corp.", "cn_name": "联合太平洋", "sector": "Industrials"},
+    "WMT": {"name": "Walmart Inc.", "cn_name": "沃尔玛", "sector": "Consumer Staples"},
+    "COST": {"name": "Costco Wholesale", "cn_name": "好市多", "sector": "Consumer Staples"},
+    "PG": {"name": "Procter & Gamble", "cn_name": "宝洁", "sector": "Consumer Staples"},
+    "KO": {"name": "Coca-Cola Co.", "cn_name": "可口可乐", "sector": "Consumer Staples"},
+    "XOM": {"name": "Exxon Mobil Corp.", "cn_name": "埃克森美孚", "sector": "Energy"},
+    "CVX": {"name": "Chevron Corp.", "cn_name": "雪佛龙", "sector": "Energy"},
+    "COP": {"name": "ConocoPhillips", "cn_name": "康菲石油", "sector": "Energy"},
+    "NEE": {"name": "NextEra Energy Inc.", "cn_name": "NextEra能源", "sector": "Utilities"},
+    "CEG": {"name": "Constellation Energy", "cn_name": "Constellation", "sector": "Utilities"},
+    "PLD": {"name": "Prologis Inc.", "cn_name": "安博", "sector": "Real Estate"},
+    "AMT": {"name": "American Tower Corp.", "cn_name": "美国电塔", "sector": "Real Estate"},
+    "LIN": {"name": "Linde plc", "cn_name": "林德集团", "sector": "Materials"},
+    "FCX": {"name": "Freeport-McMoRan", "cn_name": "自由港迈克墨伦", "sector": "Materials"}
+  },
+  "universes": {
+    "sp500_core": {
+      "id": "sp500_core",
+      "name": "S&P 500 核心权重 (全行业 50 标杆)",
+      "description": "覆盖标普 500 全部 11 个 GICS 一级行业的核心龙头权重股",
+      "tickers": [
+        "AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CRM", "AMD", "ADBE", "CSCO", "PLTR",
+        "GOOGL", "META", "NFLX", "DIS", "TMUS",
+        "AMZN", "TSLA", "HD", "MCD", "BKNG",
+        "BRK-B", "JPM", "V", "MA", "GS", "BAC", "BLK",
+        "LLY", "UNH", "JNJ", "ABBV", "MRK",
+        "GE", "CAT", "RTX", "UBER", "UNP",
+        "WMT", "COST", "PG", "KO",
+        "XOM", "CVX", "COP",
+        "NEE", "CEG",
+        "PLD", "AMT",
+        "LIN", "FCX"
+      ]
+    },
+    "nasdaq_core": {
+      "id": "nasdaq_core",
+      "name": "纳指核心 (NASDAQ-100 科技与成长)",
+      "description": "聚焦纳斯达克 100 指数核心算力、半导体、互联网与生物科技龙头",
+      "tickers": [
+        "AAPL", "MSFT", "NVDA", "AVGO", "AMD", "ADBE", "CSCO", "PLTR", "MU", "INTC", "QCOM", "PANW",
+        "GOOGL", "META", "NFLX", "TMUS",
+        "AMZN", "TSLA", "BKNG",
+        "COST", "ISRG", "CEG"
+      ]
+    },
+    "mega_tech": {
+      "id": "mega_tech",
+      "name": "核心科技巨头 (Mag-7 & AI 算力核心)",
+      "description": "美股七巨头 (Magnificent 7) 及 AI 基础设施核心标的",
+      "tickers": [
+        "NVDA", "AAPL", "MSFT", "AMZN", "GOOGL", "META", "TSLA",
+        "AVGO", "ORCL", "AMD", "PLTR", "NFLX", "CRM", "MU", "PANW", "CEG"
+      ]
+    },
+    "custom_watchlist": {
+      "id": "custom_watchlist",
+      "name": "自定义观察池 (Custom Alpha Pool)",
+      "description": "高弹性跨行业热门观察标的，支持在界面中动态增删 Ticker",
+      "tickers": [
+        "NVDA", "TSLA", "PLTR", "META", "AMD", "AVGO", "NFLX",
+        "LLY", "JPM", "GS", "GE", "UBER", "COST", "XOM", "CEG"
+      ]
+    }
+  }
+}

@@ -1,0 +1,101 @@
+# =============================================================================
+# MarketPulse — Git Ignore Rules
+# =============================================================================
+
+# 1. Python Bytecode & Build Artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 2. Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+.python-version
+
+# 3. Environment Variables, Credentials & Private Configs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+*credentials*
+config/local*.json
+
+# 4. Local Market Cache, Databases & Quantitative Data Files
+data/
+cache/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# 5. Test, Linter & Coverage Caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# 6. Logs & Runtime Files
+logs/
+*.log
+*.pid
+
+# 7. Desktop Packaging (PyInstaller / py2app / PyWebView)
+*.spec
+*.app/
+*.dmg
+*.exe
+*.msi
+
+# 8. OS, Editor & AI Assistant Directories
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.claude/
+.cursor/
+.gemini/
+.agent/

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-color-mode="us">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketPulse — 美股多维量化行情可视化终端</title>
+  <link rel="stylesheet" href="/static/css/terminal.css" />
+  <script src="/static/vendor/echarts.min.js"></script>
+</head>
+<body>
+  <!-- ==================== TOP TERMINAL CONTROL BAR ==================== -->
+  <header class="terminal-header">
+    <div class="header-top-row">
+      <!-- Left: Brand + Trading Session & Timestamp Status -->
+      <div class="brand-group">
+        <div class="brand-logo">
+          <div class="brand-logo-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <span>MarketPulse</span>
+          <span class="brand-tag">V1.0 Terminal</span>
+        </div>
+
+        <div class="status-pills">
+          <div class="status-pill" title="智能识别美股最近完整交易日与盘中/休市状态">
+            <span id="session-dot" class="pulse-dot closed"></span>
+            <strong id="trading-date-badge" class="font-mono-num" style="color: #f8fafc;">--</strong>
+            <span style="color: #475569;">|</span>
+            <span id="session-label-badge">正在检测交易日状态...</span>
+          </div>
+
+          <div class="status-pill" title="本地 SQLite 缓存状态与数据时间戳">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+            <span id="cache-source-badge" class="font-mono-num">SQLite Cache</span>
+            <span style="color: #475569;">·</span>
+            <span id="timestamp-badge" class="font-mono-num" style="color: #64748b;">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Universe Selector, Color Habit Toggle, Watchlist Editor, Force Refresh -->
+      <div class="controls-group">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label for="universe-select" style="font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">股票池:</label>
+          <select id="universe-select" class="terminal-select" title="切换预设或自定义美股观察池">
+            <option value="sp500_core">S&amp;P 500 核心权重 (50)</option>
+            <option value="nasdaq_core">纳指核心科技 (22)</option>
+            <option value="mega_tech">核心科技巨头 (16)</option>
+            <option value="custom_watchlist">自定义观察池</option>
+          </select>
+        </div>
+
+        <button id="btn-edit-watchlist" class="terminal-btn" title="编辑自定义观察池成分股">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9"></path>
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+          </svg>
+          <span>自定义池配置</span>
+        </button>
+
+        <button id="btn-color-mode" class="terminal-btn" title="一键切换美股绿涨红跌 / 中式红涨绿跌配色">
+          <span id="color-mode-indicator" style="display: inline-flex; align-items: center; gap: 4px;">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: #f43f5e; display: inline-block;"></span>
+          </span>
+          <span id="color-mode-label">美股配色 (绿涨红跌)</span>
+        </button>
+
+        <button id="btn-plugins" class="terminal-btn" title="查看模块化分析器插件架构">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span id="plugin-count-badge">5 分析插件</span>
+        </button>
+
+        <button id="btn-refresh" class="terminal-btn terminal-btn-primary" title="强制从 Yahoo Finance 重新拉取最新行情并更新本地缓存">
+          <span class="spinner" id="refresh-spinner"></span>
+          <svg id="refresh-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          <span id="refresh-btn-text">强制刷新数据</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== US CORE INDICES RIBBON ==================== -->
+  <section id="indices-ribbon" class="market-ribbon">
+    <!-- Populated dynamically by app.js -->
+  </section>
+
+  <!-- ==================== MARKET BREADTH & KPI STRIP ==================== -->
+  <section id="kpi-strip" class="kpi-strip">
+    <!-- Populated dynamically by app.js -->
+  </section>
+
+  <!-- ==================== 4 CORE VISUAL WIDGETS (2x2 GRID) ==================== -->
+  <main class="dashboard-grid">
+    <!-- WIDGET 1: Market Cap Treemap -->
+    <section class="widget-panel" id="panel-treemap">
+      <div class="widget-header">
+        <div class="widget-title-group">
+          <span class="widget-number">01</span>
+          <div>
+            <div class="widget-title">大盘市值热力图 (Market Cap Treemap)</div>
+            <div class="widget-subtitle">GICS 行业 → 个股两级嵌套 · 面积映射总市值 · 颜色深浅映射当日涨跌幅 (-5% ~ +5%)</div>
+          </div>
+        </div>
+        <div class="widget-toolbar">
+          <select id="treemap-sector-filter" class="terminal-select" style="padding: 3px 8px; font-size: 11px;">
+            <option value="ALL">全部 GICS 行业</option>
+          </select>
+          <button id="btn-treemap-reset" class="filter-pill" title="重置热力图缩放层级">重置视图</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div id="chart-treemap" class="chart-canvas"></div>
+        <!-- Color Scale Legend Bar -->
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 0 6px; font-size: 11px; color: var(--text-secondary);">
+          <span class="font-mono-num">点击方块可钻取行业或查看个股 20 日趋势详情</span>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="font-mono-num">-5%+</span>
+            <div id="treemap-legend-gradient" style="width: 150px; height: 8px; border-radius: 4px;"></div>
+            <span class="font-mono-num">+5%+</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIDGET 2: Top Gainers & Losers Bar Chart -->
+    <section class="widget-panel" id="panel-gainers-losers">
+      <div class="widget-header">
+        <div class="widget-title-group">
+          <span class="widget-number">02</span>
+          <div>
+            <div class="widget-title">多空涨跌幅龙虎榜 (Top Gainers &amp; Losers)</div>
+            <div class="widget-subtitle">同屏双向对比当日涨幅 Top 10 与跌幅 Top 10 · 悬停查看日内振幅与成交额</div>
+          </div>
+        </div>
+        <div class="widget-toolbar">
+          <button class="filter-pill active" data-gl-mode="diverging" id="btn-gl-diverging">双向对称视图</button>
+          <button class="filter-pill" data-gl-mode="ranked" id="btn-gl-ranked">首尾极值排序</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div id="chart-gainers-losers" class="chart-canvas"></div>
+        <div id="gl-footer-summary" style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; padding: 0 6px; font-size: 11px; color: var(--text-secondary);">
+          <span>悬停条形图查看：日内振幅 (Amplitude%) · 当日成交额 (Turnover$) · 相对量比 (RVOL)</span>
+          <span id="gl-spread-badge" class="font-mono-num">--</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIDGET 3: Volume Anomaly vs. Return Scatter -->
+    <section class="widget-panel" id="panel-volume-scatter">
+      <div class="widget-header">
+        <div class="widget-title-group">
+          <span class="widget-number">03</span>
+          <div>
+            <div class="widget-title">量价异动雷达 (Volume Anomaly vs. Return Scatter)</div>
+            <div class="widget-subtitle">X 轴当日涨跌幅 (%) · Y 轴相对成交量比率 (RVOL = 成交量/20日均量) · 气泡大小映射市值</div>
+          </div>
+        </div>
+        <div class="widget-toolbar" id="scatter-filter-group">
+          <button class="filter-pill active" data-scatter-filter="ALL">全部标的</button>
+          <button class="filter-pill" data-scatter-filter="ANOMALY">异动 (RVOL≥1.5x)</button>
+          <button class="filter-pill" data-scatter-filter="BREAKOUT_SURGE">放量突破</button>
+          <button class="filter-pill" data-scatter-filter="HEAVY_SELLOFF">放量杀跌</button>
+        </div>
+      </div>
+      <div class="widget-body">
+        <div id="chart-volume-scatter" class="chart-canvas"></div>
+        <div id="scatter-anomaly-strip" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; padding: 0 6px; font-size: 11px; color: var(--text-secondary); overflow-x: auto;">
+          <span>虚线阈值: <strong class="font-mono-num" style="color: #f59e0b;">RVOL = 1.50x</strong> (高于阈值代表显著放量异动)</span>
+          <div id="scatter-quadrant-badges" style="display: flex; gap: 8px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WIDGET 4: Intraday Range & 52W Drawdown Table -->
+    <section class="widget-panel" id="panel-intraday-table">
+      <div class="widget-header">
+        <div class="widget-title-group">
+          <span class="widget-number">04</span>
+          <div>
+            <div class="widget-title">日内多空博弈与 52 周水位表 (Intraday Range &amp; 52W Drawdown)</div>
+            <div class="widget-subtitle">可视化日内价格位置条 (Low–Close–High) 与距离 52 周高点回撤幅度进度条</div>
+          </div>
+        </div>
+        <div class="widget-toolbar">
+          <input
+            type="text"
+            id="table-search-input"
+            placeholder="搜索代码/名称/行业..."
+            style="background: #0b111e; color: #f1f5f9; border: 1px solid var(--border-subtle); border-radius: 5px; padding: 4px 9px; font-size: 11.5px; width: 145px; outline: none;"
+          />
+          <select id="table-regime-filter" class="terminal-select" style="padding: 3px 8px; font-size: 11px;">
+            <option value="ALL">全部水位状态</option>
+            <option value="STRONG_CLOSE">日内高收 (位置≥75%)</option>
+            <option value="WEAK_CLOSE">日内低收 (位置≤25%)</option>
+            <option value="NEAR_ATH">逼近52周新高 (回撤≤3%)</option>
+            <option value="DEEP_DRAWDOWN">深度回撤 (回撤≥20%)</option>
+          </select>
+        </div>
+      </div>
+      <div class="widget-body" style="padding-top: 8px;">
+        <div class="table-scroll-container">
+          <table class="terminal-table" id="intraday-52w-table">
+            <thead>
+              <tr>
+                <th data-sort="ticker">代码 / 公司 <span class="sort-indicator"></span></th>
+                <th data-sort="price" style="text-align: right;">最新价 <span class="sort-indicator"></span></th>
+                <th data-sort="change_pct" style="text-align: right;">涨跌幅 <span class="sort-indicator"></span></th>
+                <th data-sort="market_cap" style="text-align: right;">总市值 <span class="sort-indicator">▼</span></th>
+                <th data-sort="rvol" style="text-align: right;">量比 RVOL <span class="sort-indicator"></span></th>
+                <th data-sort="intraday_pos_pct">日内价格位置条 (Low — Close — High) <span class="sort-indicator"></span></th>
+                <th data-sort="drawdown_52w_pct">距 52 周高点回撤 (52W Drawdown %) <span class="sort-indicator"></span></th>
+              </tr>
+            </thead>
+            <tbody id="intraday-table-tbody">
+              <!-- Populated dynamically by app.js -->
+            </tbody>
+          </table>
+        </div>
+        <div id="table-footer-stats" style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding: 0 4px; font-size: 11px; color: var(--text-secondary);">
+          <span id="table-count-label">共 -- 只标的</span>
+          <span id="table-regime-summary">--</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== MODAL 1: STOCK DETAIL & 20D SPARKLINE ==================== -->
+  <div class="modal-backdrop" id="stock-detail-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="modal-stock-ticker" class="font-mono-num" style="font-size: 18px; font-weight: 800; color: #ffffff;">NVDA</span>
+            <span id="modal-stock-name" style="font-size: 13px; color: var(--text-secondary);">NVIDIA Corp.</span>
+            <span id="modal-stock-sector" class="brand-tag">信息技术</span>
+          </div>
+        </div>
+        <button class="terminal-btn" id="btn-close-stock-modal">关闭 ✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="modal-stock-kpis" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;"></div>
+        <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">
+          过去 20 个交易日收盘价走势 (20-Day Close Price Action)
+        </div>
+        <div id="modal-sparkline-chart" style="width: 100%; height: 220px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: CUSTOM WATCHLIST EDITOR ==================== -->
+  <div class="modal-backdrop" id="watchlist-modal">
+    <div class="modal-card" style="max-width: 560px;">
+      <div class="modal-header">
+        <div style="font-size: 15px; font-weight: 700;">自定义观察池配置 (Custom Watchlist)</div>
+        <button class="terminal-btn" id="btn-close-watchlist-modal">关闭 ✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 10px;">
+          输入美股代码（以逗号或空格分隔，例如 <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>），保存后自动拉取最新行情并缓存。
+        </p>
+        <textarea
+          id="watchlist-textarea"
+          rows="4"
+          class="font-mono-num"
+          style="width: 100%; background: #090e17; color: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 10px; font-size: 13px; outline: none; margin-bottom: 12px;"
+        ></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+          <button class="terminal-btn" id="btn-reset-default-watchlist">恢复默认推荐</button>
+          <button class="terminal-btn terminal-btn-primary" id="btn-save-watchlist">保存并切换到自定义池</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 3: MODULAR ANALYZER PLUGINS ==================== -->
+  <div class="modal-backdrop" id="plugins-modal">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <div style="font-size: 15px; font-weight: 700;">MarketPulse 模块化分析器插件架构 (analyzers/)</div>
+        <button class="terminal-btn" id="btn-close-plugins-modal">关闭 ✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">
+          所有可视化计算模块均继承自 <code class="font-mono-num">analyzers.base.BaseAnalyzer</code> 并通过装饰器注册至 <code class="font-mono-num">AnalyzerRegistry</code>，无需修改核心数据引擎即可平滑扩展回测、资金流与波动率新面板：
+        </p>
+        <div id="plugins-list-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
