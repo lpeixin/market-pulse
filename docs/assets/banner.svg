@@ -126,10 +126,10 @@
 
     <!-- Bilingual Subtitle -->
     <text x="0" y="128" fill="#e2e8f0" font-family="-apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif" font-size="16.5" font-weight="600">
-      Cross-Platform US Equity Quantitative Visualization Terminal
+      Multi-Market (US · China A-Shares · Hong Kong) Quantitative Visual Terminal
     </text>
     <text x="0" y="154" fill="#94a3b8" font-family="-apple-system, BlinkMacSystemFont, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" font-weight="500">
-      跨平台美股多维行情可视化终端 · 智能交易日回溯 · 本地 SQLite 毫秒级缓存 · 模块化插件架构
+      跨平台美股 / A股 / 港股多维行情可视化终端 · 智能时区与交易日回溯 · SQLite 毫秒级缓存
     </text>
 
     <!-- Accent Divider Line -->

@@ -1,7 +1,6 @@
 /**
- * MarketPulse — Bilingual (EN / 中文) Frontend Visualization & Terminal Controller
- * Renders 4 interactive ECharts / HTML5 financial widgets with instant
- * Language (EN <-> 中文) and Color Habit (US Green-Up <-> CN Red-Up) switching.
+ * MarketPulse — Multi-Market (US / CN A-Shares / HK) & Bilingual (EN / 中文)
+ * Frontend Visualization & Terminal Controller.
  */
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -13,10 +12,40 @@ const initialColor =
   urlParams.get("color") === "cn" || urlParams.get("color") === "us"
     ? urlParams.get("color")
     : localStorage.getItem("mp_color_mode") || "us";
+const initialMarket = ["US", "CN", "HK"].includes(
+  (urlParams.get("market") || "").toUpperCase()
+)
+  ? urlParams.get("market").toUpperCase()
+  : "US";
+
+const DEFAULT_UNIVERSE_BY_MARKET = {
+  US: "sp500_core",
+  CN: "cn_csi300_core",
+  HK: "hk_hsi_core",
+};
+
+const CUSTOM_WATCHLIST_BY_MARKET = {
+  US: "custom_watchlist",
+  CN: "cn_custom_watchlist",
+  HK: "hk_custom_watchlist",
+};
+
+const DEFAULT_WATCHLIST_TICKERS = {
+  US: "NVDA, TSLA, PLTR, META, AMD, AVGO, NFLX, LLY, JPM, GS, GE, UBER, COST, XOM, CEG",
+  CN: "600519.SS, 300750.SZ, 002594.SZ, 688981.SS, 600036.SS, 601318.SS, 300308.SZ, 002371.SZ, 300059.SZ, 600900.SS, 601899.SS, 000333.SZ, 300760.SZ, 601138.SS",
+  HK: "0700.HK, 9988.HK, 3690.HK, 1810.HK, 1211.HK, 0981.HK, 0388.HK, 0883.HK, 0005.HK, 1299.HK, 2015.HK, 9961.HK, 9633.HK, 2899.HK",
+};
 
 const state = {
   lang: initialLang, // 'en' | 'zh'
-  universeId: urlParams.get("universe") || "sp500_core",
+  market: initialMarket, // 'US' | 'CN' | 'HK'
+  universeId:
+    urlParams.get("universe") || DEFAULT_UNIVERSE_BY_MARKET[initialMarket],
+  lastUniverseByMarket: {
+    US: "sp500_core",
+    CN: "cn_csi300_core",
+    HK: "hk_hsi_core",
+  },
   colorMode: initialColor, // 'us' = Green Up/Red Down, 'cn' = Red Up/Green Down
   glMode: "diverging", // 'diverging' | 'ranked'
   scatterFilter: "ALL", // 'ALL' | 'ANOMALY' | 'BREAKOUT_SURGE' | 'HEAVY_SELLOFF'
@@ -42,8 +71,13 @@ const state = {
 
 const I18N = {
   en: {
-    docTitle: "MarketPulse — US Equity Quantitative Visualization Terminal",
-    tradingDatePrefix: "US Trading Day:",
+    docTitle: "MarketPulse — Multi-Market Quantitative Visualization Terminal",
+    mktTabUS: "US Market",
+    mktTabCN: "CN A-Shares",
+    mktTabHK: "HK Stocks",
+    tradingDatePrefixUS: "US Trading Day:",
+    tradingDatePrefixCN: "CN Trading Day:",
+    tradingDatePrefixHK: "HK Trading Day:",
     detectingSession: "Detecting market session...",
     loadError: "Failed to load market data. Click Force Refresh to retry.",
     universeLabel: "Universe:",
@@ -97,7 +131,7 @@ const I18N = {
     w2ModeDiverging: "Butterfly View",
     w2ModeRanked: "Ranked Extremes",
     w2FooterHint:
-      "Hover bars to inspect Intraday Amplitude (%) · Daily Turnover ($) · Relative Volume (RVOL)",
+      "Hover bars to inspect Intraday Amplitude (%) · Daily Turnover · Relative Volume (RVOL)",
     w2SpreadLabel: "Top-Bottom Spread:",
     w2LegendLosers: "Top 10 Losers",
     w2LegendGainers: "Top 10 Gainers",
@@ -160,9 +194,15 @@ const I18N = {
     modalKpi52w: "52W Drawdown / 52W High",
     modalSparklineTitle: "Trailing 20 Trading Days Close Price Action",
     modalCloseSeries: "Close Price",
-    modalWatchlistTitle: "Custom Watchlist Configuration",
-    modalWatchlistDesc:
-      'Enter US stock tickers separated by commas or spaces (e.g., <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>). MarketPulse will automatically fetch and cache their market data.',
+    modalWatchlistTitleUS: "US Custom Watchlist Configuration",
+    modalWatchlistTitleCN: "China A-Share Custom Watchlist Configuration",
+    modalWatchlistTitleHK: "Hong Kong Stock Custom Watchlist Configuration",
+    modalWatchlistDescUS:
+      'Enter US stock tickers separated by commas or spaces (e.g., <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>):',
+    modalWatchlistDescCN:
+      'Enter China A-Share tickers (<code class="font-mono-num">.SS</code> / <code class="font-mono-num">.SZ</code> or 6-digit codes like <code class="font-mono-num">600519, 300750, 002594, 688981</code>):',
+    modalWatchlistDescHK:
+      'Enter Hong Kong stock tickers (<code class="font-mono-num">.HK</code> or 4-digit codes like <code class="font-mono-num">0700.HK, 9988.HK, 3690.HK, 1810.HK</code>):',
     modalWatchlistReset: "Reset Defaults",
     modalWatchlistSave: "Save & Switch to Watchlist",
     modalPluginsTitle: "MarketPulse Modular Analyzer Plugins (analyzers/)",
@@ -170,8 +210,13 @@ const I18N = {
       'All visual computation modules inherit from <code class="font-mono-num">analyzers.base.BaseAnalyzer</code> and register via <code class="font-mono-num">@AnalyzerRegistry.register</code>, enabling zero-friction expansion for backtesting, ETF flows, and volatility modules:',
   },
   zh: {
-    docTitle: "MarketPulse — 美股多维量化行情可视化终端",
-    tradingDatePrefix: "美股交易日:",
+    docTitle: "MarketPulse — 跨市场（美股 / A股 / 港股）多维量化行情可视化终端",
+    mktTabUS: "US 美股",
+    mktTabCN: "CN A股",
+    mktTabHK: "HK 港股",
+    tradingDatePrefixUS: "美股交易日:",
+    tradingDatePrefixCN: "A股交易日:",
+    tradingDatePrefixHK: "港股交易日:",
     detectingSession: "正在检测交易日状态...",
     loadError: "数据加载异常，请点击强制刷新重试",
     universeLabel: "股票池:",
@@ -224,7 +269,7 @@ const I18N = {
     w2ModeDiverging: "双向对称视图",
     w2ModeRanked: "首尾极值排序",
     w2FooterHint:
-      "悬停条形图查看：日内振幅 (Amplitude%) · 当日成交额 (Turnover$) · 相对量比 (RVOL)",
+      "悬停条形图查看：日内振幅 (Amplitude%) · 当日成交额 (Turnover) · 相对量比 (RVOL)",
     w2SpreadLabel: "首尾极差:",
     w2LegendLosers: "跌幅榜 Top 10 (Losers)",
     w2LegendGainers: "涨幅榜 Top 10 (Gainers)",
@@ -287,9 +332,15 @@ const I18N = {
     modalKpi52w: "52周回撤 / 52周高点",
     modalSparklineTitle: "过去 20 个交易日收盘价走势 (20-Day Close Price Action)",
     modalCloseSeries: "收盘价",
-    modalWatchlistTitle: "自定义观察池配置 (Custom Watchlist)",
-    modalWatchlistDesc:
-      '输入美股代码（以逗号或空格分隔，例如 <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>），保存后自动拉取最新行情并缓存。',
+    modalWatchlistTitleUS: "美股自定义观察池配置 (US Custom Watchlist)",
+    modalWatchlistTitleCN: "中国 A 股自定义观察池配置 (CN Custom Watchlist)",
+    modalWatchlistTitleHK: "香港港股自定义观察池配置 (HK Custom Watchlist)",
+    modalWatchlistDescUS:
+      '输入美股代码（以逗号或空格分隔，例如 <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>），保存后自动拉取最新行情并缓存：',
+    modalWatchlistDescCN:
+      '输入 A 股代码（支持 <code class="font-mono-num">.SS</code> / <code class="font-mono-num">.SZ</code> 后缀或直接输入 6 位代码如 <code class="font-mono-num">600519, 300750, 002594, 688981</code>）：',
+    modalWatchlistDescHK:
+      '输入港股代码（支持 <code class="font-mono-num">.HK</code> 后缀或直接输入 4 位代码如 <code class="font-mono-num">0700.HK, 9988.HK, 3690.HK, 1810.HK</code>）：',
     modalWatchlistReset: "恢复默认推荐",
     modalWatchlistSave: "保存并切换到自定义池",
     modalPluginsTitle: "MarketPulse 模块化分析器插件架构 (analyzers/)",
@@ -306,6 +357,15 @@ function isZh() {
   return state.lang === "zh";
 }
 
+function csym(item) {
+  return (
+    item?.currency_symbol ||
+    state.dashboardData?.universe?.currency_symbol ||
+    state.dashboardData?.session?.currency_symbol ||
+    "$"
+  );
+}
+
 function stockName(item) {
   if (!item) return "";
   return isZh()
@@ -316,6 +376,15 @@ function stockName(item) {
 function sectorName(item) {
   if (!item) return "";
   return isZh() ? item.sector_cn || item.sector : item.sector || item.sector_cn;
+}
+
+function chartNodeLabel(item) {
+  if (!item) return "";
+  // For CN / HK markets in Chinese UI mode, show Chinese short name + short code so it's crystal-clear
+  if (isZh() && state.market !== "US" && item.cn_name) {
+    return item.cn_name;
+  }
+  return item.ticker;
 }
 
 /* ==========================================================================
@@ -372,6 +441,19 @@ function applyStaticTranslations() {
   document.documentElement.setAttribute("lang", isZh() ? "zh-CN" : "en");
   document.documentElement.setAttribute("data-lang", state.lang);
   localStorage.setItem("mp_lang", state.lang);
+
+  // Market Switcher Tabs
+  const btnUS = document.getElementById("mkt-btn-US");
+  const btnCN = document.getElementById("mkt-btn-CN");
+  const btnHK = document.getElementById("mkt-btn-HK");
+  if (btnUS) btnUS.textContent = t("mktTabUS");
+  if (btnCN) btnCN.textContent = t("mktTabCN");
+  if (btnHK) btnHK.textContent = t("mktTabHK");
+
+  document.querySelectorAll(".market-tab").forEach((btn) => {
+    const m = btn.getAttribute("data-market");
+    btn.classList.toggle("active", m === state.market);
+  });
 
   // Language toggle button highlight
   const langLabel = document.getElementById("lang-toggle-label");
@@ -437,8 +519,14 @@ function applyStaticTranslations() {
   // Modals
   setTxt("btn-close-stock-modal", "modalClose");
   setTxt("modal-sparkline-title", "modalSparklineTitle");
-  setTxt("modal-watchlist-title", "modalWatchlistTitle");
-  setHtml("modal-watchlist-desc", "modalWatchlistDesc");
+  setTxt(
+    "modal-watchlist-title",
+    `modalWatchlistTitle${state.market}`
+  );
+  setHtml(
+    "modal-watchlist-desc",
+    `modalWatchlistDesc${state.market}`
+  );
   setTxt("btn-close-watchlist-modal", "modalClose");
   setTxt("btn-reset-default-watchlist", "modalWatchlistReset");
   setTxt("btn-save-watchlist", "modalWatchlistSave");
@@ -509,17 +597,23 @@ async function loadDashboard(forceRefresh = false) {
 
     const url = `/api/dashboard?universe=${encodeURIComponent(
       state.universeId
-    )}&force_refresh=${forceRefresh ? "true" : "false"}`;
+    )}&market=${encodeURIComponent(state.market)}&force_refresh=${
+      forceRefresh ? "true" : "false"
+    }`;
     const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
     const data = await res.json();
     state.dashboardData = data;
+    if (data.universe?.market) {
+      state.market = data.universe.market.toUpperCase();
+      state.universeId = data.universe.id;
+      state.lastUniverseByMarket[state.market] = data.universe.id;
+    }
 
     renderAll();
 
-    // Check if URL requested opening a specific stock modal
     const modalTicker = urlParams.get("modal");
     if (modalTicker && !state.activeModalTicker) {
       state.activeModalTicker = modalTicker.toUpperCase();
@@ -586,8 +680,9 @@ function renderHeaderStatus() {
   const dotEl = document.getElementById("session-dot");
   dotEl.className = `pulse-dot ${session.is_intraday ? "intraday" : "closed"}`;
 
+  const prefixKey = `tradingDatePrefix${state.market}`;
   document.getElementById("trading-date-badge").textContent =
-    `${t("tradingDatePrefix")} ${session.trading_date}`;
+    `${t(prefixKey)} ${session.trading_date}`;
 
   const sessionText = isZh()
     ? session.session_label_zh || session.session_label
@@ -604,7 +699,7 @@ function renderHeaderStatus() {
   }
   document.getElementById("cache-source-badge").textContent = cacheSourceText;
   document.getElementById("timestamp-badge").textContent =
-    session.et_time || session.local_time;
+    session.market_time || session.et_time || session.local_time;
 
   if (plugins) {
     document.getElementById("plugin-count-badge").textContent =
@@ -613,8 +708,11 @@ function renderHeaderStatus() {
 
   if (state.dashboardData.universes_list) {
     state.universesList = state.dashboardData.universes_list;
+    const marketUniverses = state.universesList.filter(
+      (u) => (u.market || "US").toUpperCase() === state.market
+    );
     const uSelect = document.getElementById("universe-select");
-    uSelect.innerHTML = state.universesList
+    uSelect.innerHTML = marketUniverses
       .map((u) => {
         const uName = isZh() ? u.name_zh || u.name : u.name_en || u.name;
         return `<option value="${u.id}" ${
@@ -641,6 +739,7 @@ function renderIndicesRibbon() {
       const displayName = isZh()
         ? idx.name_zh || idx.name
         : idx.name_en || idx.name;
+      const decimals = Number(idx.price) < 10 ? 3 : 2;
       return `
         <div class="ribbon-card">
           <div class="ribbon-card-top">
@@ -649,11 +748,11 @@ function renderIndicesRibbon() {
           </div>
           <div class="ribbon-card-bottom">
             <span class="ribbon-value font-mono-num">${Number(idx.price).toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals,
             })}</span>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span class="font-mono-num ${chgClass}" style="font-size: 11.5px;">${sign}${Number(idx.change).toFixed(2)}</span>
+              <span class="font-mono-num ${chgClass}" style="font-size: 11.5px;">${sign}${Number(idx.change).toFixed(decimals)}</span>
               <span class="font-mono-num ${badgeClass}">${formatSignPct(idx.change_pct)}</span>
             </div>
           </div>
@@ -761,6 +860,7 @@ function renderTreemap() {
   const treemapPayload = state.dashboardData?.widgets?.market_cap_treemap;
   if (!treemapPayload || !treemapPayload.tree) return;
 
+  const curSym = csym();
   let rawTree = treemapPayload.tree;
   if (state.treemapSector !== "ALL") {
     rawTree = rawTree.filter((sec) => sec.sector === state.treemapSector);
@@ -841,7 +941,7 @@ function renderTreemap() {
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
               <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
-              <strong class="font-mono-num">$${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
+              <strong class="font-mono-num">${curSym}${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
               <span style="color:#94a3b8;">${t("ttMcapWeight")}</span>
@@ -878,15 +978,16 @@ function renderTreemap() {
             const d = params.data;
             if (!d || !d.ticker) return params.name;
             const sign = d.change_pct >= 0 ? "+" : "";
-            return `{ticker|${d.ticker}}\n{chg|${sign}${d.change_pct.toFixed(2)}%}\n{price|$${d.price.toFixed(2)}}`;
+            const titleStr = chartNodeLabel(d);
+            return `{ticker|${titleStr}}\n{chg|${sign}${d.change_pct.toFixed(2)}%}\n{price|${curSym}${d.price.toFixed(2)}}`;
           },
           rich: {
             ticker: {
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 800,
               color: "#ffffff",
               lineHeight: 16,
-              fontFamily: "JetBrains Mono, SF Mono, monospace",
+              fontFamily: "JetBrains Mono, SF Mono, PingFang SC, sans-serif",
               textShadowColor: "rgba(0, 0, 0, 0.65)",
               textShadowBlur: 3,
             },
@@ -966,6 +1067,7 @@ function renderGainersLosers() {
   const gl = state.dashboardData?.widgets?.top_gainers_losers;
   if (!gl) return;
   const pal = getPalette();
+  const curSym = csym();
 
   const gainers = gl.gainers || [];
   const losers = gl.losers || [];
@@ -973,7 +1075,7 @@ function renderGainersLosers() {
   const spreadBadge = document.getElementById("gl-spread-badge");
   if (spreadBadge && gl.best_ticker && gl.worst_ticker) {
     const spread = (gl.best_ticker.change_pct - gl.worst_ticker.change_pct).toFixed(2);
-    spreadBadge.innerHTML = `${t("w2SpreadLabel")} <strong style="color:#f8fafc;">${spread}%</strong> (${gl.best_ticker.ticker} ${formatSignPct(gl.best_ticker.change_pct)} vs ${gl.worst_ticker.ticker} ${formatSignPct(gl.worst_ticker.change_pct)})`;
+    spreadBadge.innerHTML = `${t("w2SpreadLabel")} <strong style="color:#f8fafc;">${spread}%</strong> (${chartNodeLabel(gl.best_ticker)} ${formatSignPct(gl.best_ticker.change_pct)} vs ${chartNodeLabel(gl.worst_ticker)} ${formatSignPct(gl.worst_ticker.change_pct)})`;
   }
 
   const tooltipFormatter = (params) => {
@@ -991,11 +1093,11 @@ function renderGainersLosers() {
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
-          <strong class="font-mono-num">$${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
+          <strong class="font-mono-num">${curSym}${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttAmplitude")}</span>
-          <strong class="font-mono-num" style="color:#f59e0b;">${d.intraday_range_pct.toFixed(2)}% ($${d.low.toFixed(2)} - $${d.high.toFixed(2)})</strong>
+          <strong class="font-mono-num" style="color:#f59e0b;">${d.intraday_range_pct.toFixed(2)}% (${curSym}${d.low.toFixed(2)} - ${curSym}${d.high.toFixed(2)})</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttTurnover")}</span>
@@ -1055,7 +1157,7 @@ function renderGainersLosers() {
       ...losers.map((l) => Math.abs(l.change_pct)),
       3.0
     );
-    const axisBound = Math.ceil(maxAbs * 1.48);
+    const axisBound = Math.ceil(maxAbs * 1.52);
 
     const option = {
       backgroundColor: "transparent",
@@ -1118,11 +1220,11 @@ function renderGainersLosers() {
             color: pal.down.bright,
             fontSize: 11,
             fontWeight: 700,
-            fontFamily: "JetBrains Mono, monospace",
+            fontFamily: "JetBrains Mono, PingFang SC, monospace",
             formatter: (params) => {
               const m = params.data?.meta;
               if (!m) return "";
-              return `${m.ticker} ${formatSignPct(m.change_pct)}`;
+              return `${chartNodeLabel(m)} ${formatSignPct(m.change_pct)}`;
             },
           },
         },
@@ -1138,11 +1240,11 @@ function renderGainersLosers() {
             color: pal.up.bright,
             fontSize: 11,
             fontWeight: 700,
-            fontFamily: "JetBrains Mono, monospace",
+            fontFamily: "JetBrains Mono, PingFang SC, monospace",
             formatter: (params) => {
               const m = params.data?.meta;
               if (!m) return "";
-              return `${m.ticker} ${formatSignPct(m.change_pct)}`;
+              return `${chartNodeLabel(m)} ${formatSignPct(m.change_pct)}`;
             },
           },
         },
@@ -1152,7 +1254,7 @@ function renderGainersLosers() {
     state.charts.gainersLosers.setOption(option, true);
   } else {
     const combined = [...losers, ...[...gainers].reverse()];
-    const yLabels = combined.map((d) => d.ticker);
+    const yLabels = combined.map((d) => chartNodeLabel(d));
     const barData = combined.map((d) => ({
       value: d.change_pct,
       meta: d,
@@ -1172,7 +1274,7 @@ function renderGainersLosers() {
         textStyle: { color: "#f8fafc", fontSize: 12 },
         formatter: tooltipFormatter,
       },
-      grid: { top: 12, bottom: 24, left: 62, right: 62 },
+      grid: { top: 12, bottom: 24, left: 72, right: 62 },
       xAxis: {
         type: "value",
         splitLine: {
@@ -1193,7 +1295,7 @@ function renderGainersLosers() {
           color: "#e2e8f0",
           fontSize: 10,
           fontWeight: 700,
-          fontFamily: "JetBrains Mono, monospace",
+          fontFamily: "JetBrains Mono, PingFang SC, monospace",
         },
       },
       series: [
@@ -1235,6 +1337,7 @@ function renderVolumeScatter() {
   const va = state.dashboardData?.widgets?.volume_anomaly_scatter;
   if (!va) return;
   const pal = getPalette();
+  const curSym = csym();
 
   const qCounts = va.quadrant_counts || {};
   const badgesEl = document.getElementById("scatter-quadrant-badges");
@@ -1267,14 +1370,14 @@ function renderVolumeScatter() {
         shadowColor: p.is_anomaly ? baseColor.main : "transparent",
       },
       label: {
-        show: p.is_anomaly || p.market_cap_b >= 1200 || Math.abs(p.change_pct) >= 3.0,
+        show: p.is_anomaly || p.symbol_size >= 30 || Math.abs(p.change_pct) >= 3.0,
         position: "top",
         distance: 3,
-        formatter: () => p.ticker,
+        formatter: () => chartNodeLabel(p),
         color: p.is_anomaly ? "#ffffff" : "#cbd5e1",
         fontSize: p.is_anomaly ? 11 : 10,
         fontWeight: p.is_anomaly ? 800 : 600,
-        fontFamily: "JetBrains Mono, monospace",
+        fontFamily: "JetBrains Mono, PingFang SC, monospace",
       },
     };
   });
@@ -1305,7 +1408,7 @@ function renderVolumeScatter() {
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
               <span style="color:#94a3b8;">${t("ttDailyReturnX")}</span>
-              <strong class="font-mono-num">${sign}${d.change_pct.toFixed(2)}% ($${d.price.toFixed(2)})</strong>
+              <strong class="font-mono-num">${sign}${d.change_pct.toFixed(2)}% (${curSym}${d.price.toFixed(2)})</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
               <span style="color:#94a3b8;">${t("ttRvolY")}</span>
@@ -1409,6 +1512,7 @@ function renderIntradayTable() {
   if (!tbody || !tbData) return;
 
   const pal = getPalette();
+  const curSym = csym();
   let rows = [...(tbData.rows || [])];
 
   const q = state.tableSearch.trim().toLowerCase();
@@ -1492,7 +1596,7 @@ function renderIntradayTable() {
             <div style="font-size: 10px; color: var(--text-muted);">${sectorName(r)}</div>
           </td>
           <td class="font-mono-num ${chgClass}" style="text-align: right; font-weight: 700;">
-            $${r.price.toFixed(2)}
+            ${curSym}${r.price.toFixed(2)}
           </td>
           <td style="text-align: right;">
             <span class="font-mono-num ${badgeClass}">${formatSignPct(r.change_pct)}</span>
@@ -1505,9 +1609,9 @@ function renderIntradayTable() {
           </td>
           <td class="intraday-cell">
             <div class="range-bar-labels font-mono-num">
-              <span>L: $${r.low.toFixed(2)}</span>
+              <span>L:${curSym}${r.low.toFixed(2)}</span>
               <span style="color: #cbd5e1;">${t("tbRange")} ${r.intraday_range_pct.toFixed(1)}% · ${t("tbPos")} ${r.intraday_pos_pct.toFixed(0)}%</span>
-              <span>H: $${r.high.toFixed(2)}</span>
+              <span>H:${curSym}${r.high.toFixed(2)}</span>
             </div>
             <div class="range-bar-track">
               <div class="range-bar-fill" style="left: ${leftPct}%; width: ${widthPct}%; background: ${barColor};"></div>
@@ -1518,9 +1622,9 @@ function renderIntradayTable() {
             <div class="range-bar-labels font-mono-num">
               <span style="color: #e2e8f0; font-weight: 700;">${r.drawdown_52w_pct.toFixed(2)}%</span>
               <span style="color: ${ddColor}; font-size: 9.5px;">${regText}</span>
-              <span>H:$${r.high_52w.toFixed(0)}</span>
+              <span>H:${curSym}${r.high_52w.toFixed(0)}</span>
             </div>
-            <div class="dd-bar-track" title="${t("tb52wRangeTitle")}: $${r.low_52w.toFixed(2)} — $${r.high_52w.toFixed(2)} (${r.pos_52w_pct}%)">
+            <div class="dd-bar-track" title="${t("tb52wRangeTitle")}: ${curSym}${r.low_52w.toFixed(2)} — ${curSym}${r.high_52w.toFixed(2)} (${r.pos_52w_pct}%)">
               <div class="dd-bar-fill" style="width: ${ddBarWidth.toFixed(1)}%; background: ${ddColor};"></div>
             </div>
           </td>
@@ -1555,6 +1659,7 @@ function openStockDetailModal(ticker) {
   if (!stock) return;
 
   state.activeModalTicker = ticker;
+  const curSym = csym(stock);
   const modal = document.getElementById("stock-detail-modal");
   modal.classList.add("open");
 
@@ -1570,7 +1675,7 @@ function openStockDetailModal(ticker) {
     <div class="ribbon-card">
       <div class="ribbon-card-top">${t("modalKpiPrice")}</div>
       <div class="font-mono-num ${chgClass}" style="font-size: 15px; font-weight: 800;">
-        $${stock.price.toFixed(2)} (${formatSignPct(stock.change_pct)})
+        ${curSym}${stock.price.toFixed(2)} (${formatSignPct(stock.change_pct)})
       </div>
     </div>
     <div class="ribbon-card">
@@ -1588,7 +1693,7 @@ function openStockDetailModal(ticker) {
     <div class="ribbon-card">
       <div class="ribbon-card-top">${t("modalKpi52w")}</div>
       <div class="font-mono-num" style="font-size: 14px; font-weight: 700;">
-        ${stock.drawdown_52w_pct.toFixed(2)}% ($${stock.high_52w.toFixed(2)})
+        ${stock.drawdown_52w_pct.toFixed(2)}% (${curSym}${stock.high_52w.toFixed(2)})
       </div>
     </div>
   `;
@@ -1609,7 +1714,7 @@ function openStockDetailModal(ticker) {
   state.charts.sparkline.setOption(
     {
       backgroundColor: "transparent",
-      grid: { top: 15, bottom: 24, left: 52, right: 18 },
+      grid: { top: 15, bottom: 24, left: 58, right: 18 },
       tooltip: {
         trigger: "axis",
         backgroundColor: "rgba(15, 23, 42, 0.95)",
@@ -1631,7 +1736,7 @@ function openStockDetailModal(ticker) {
         axisLabel: {
           color: "#94a3b8",
           fontSize: 10.5,
-          formatter: (v) => `$${v.toFixed(0)}`,
+          formatter: (v) => `${curSym}${v.toFixed(0)}`,
         },
       },
       series: [
@@ -1661,8 +1766,24 @@ function openStockDetailModal(ticker) {
    ========================================================================== */
 
 function bindEvents() {
+  // Top-level Market Switcher buttons (US / CN / HK)
+  document.querySelectorAll(".market-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetMkt = btn.getAttribute("data-market");
+      if (!targetMkt || targetMkt === state.market) return;
+      state.market = targetMkt;
+      state.universeId =
+        state.lastUniverseByMarket[targetMkt] ||
+        DEFAULT_UNIVERSE_BY_MARKET[targetMkt];
+      state.treemapSector = "ALL";
+      applyStaticTranslations();
+      loadDashboard(false);
+    });
+  });
+
   document.getElementById("universe-select").addEventListener("change", (e) => {
     state.universeId = e.target.value;
+    state.lastUniverseByMarket[state.market] = state.universeId;
     state.treemapSector = "ALL";
     loadDashboard(false);
   });
@@ -1753,12 +1874,14 @@ function bindEvents() {
   document
     .getElementById("btn-edit-watchlist")
     .addEventListener("click", () => {
+      applyStaticTranslations();
+      const targetUid = CUSTOM_WATCHLIST_BY_MARKET[state.market];
       const customUniv = (state.universesList || []).find(
-        (u) => u.id === "custom_watchlist"
+        (u) => u.id === targetUid
       );
       const currentTickers = customUniv
         ? customUniv.tickers.join(", ")
-        : "NVDA, TSLA, PLTR, META, AMD, AVGO, NFLX, LLY, JPM, GS, GE, UBER, COST, XOM, CEG";
+        : DEFAULT_WATCHLIST_TICKERS[state.market];
       document.getElementById("watchlist-textarea").value = currentTickers;
       document.getElementById("watchlist-modal").classList.add("open");
     });
@@ -1773,7 +1896,7 @@ function bindEvents() {
     .getElementById("btn-reset-default-watchlist")
     .addEventListener("click", () => {
       document.getElementById("watchlist-textarea").value =
-        "NVDA, TSLA, PLTR, META, AMD, AVGO, NFLX, LLY, JPM, GS, GE, UBER, COST, XOM, CEG";
+        DEFAULT_WATCHLIST_TICKERS[state.market];
     });
 
   document
@@ -1786,14 +1909,16 @@ function bindEvents() {
         .filter(Boolean);
       if (!tickers.length) return;
       try {
-        await fetch("/api/watchlist", {
+        const res = await fetch("/api/watchlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tickers }),
+          body: JSON.stringify({ tickers, market: state.market }),
         });
+        const resData = await res.json();
         document.getElementById("watchlist-modal").classList.remove("open");
-        state.universeId = "custom_watchlist";
-        document.getElementById("universe-select").value = "custom_watchlist";
+        state.universeId =
+          resData.universe_id || CUSTOM_WATCHLIST_BY_MARKET[state.market];
+        state.lastUniverseByMarket[state.market] = state.universeId;
         loadDashboard(false);
       } catch (err) {
         console.error("Failed to update watchlist:", err);

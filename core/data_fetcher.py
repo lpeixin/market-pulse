@@ -1,5 +1,5 @@
 """
-Intelligent US Market Trading Day Detector & Batch Data Fetcher.
+Intelligent Multi-Market (US / CN A-Shares / HK) Trading Day Detector & Batch Data Fetcher.
 Uses yfinance + pandas with SQLite local caching to avoid rate limits.
 """
 
@@ -25,10 +25,25 @@ from core.cache import MarketCache
 logger = logging.getLogger("MarketPulse.DataFetcher")
 
 ET_ZONE = ZoneInfo("America/New_York")
+CN_ZONE = ZoneInfo("Asia/Shanghai")
+HK_ZONE = ZoneInfo("Asia/Hong_Kong")
+
+MARKET_TIMEZONES: Dict[str, Tuple[ZoneInfo, str]] = {
+    "US": (ET_ZONE, "ET"),
+    "CN": (CN_ZONE, "CST"),
+    "HK": (HK_ZONE, "HKT"),
+}
+
+MARKET_CUSTOM_WATCHLIST_IDS: Dict[str, str] = {
+    "US": "custom_watchlist",
+    "CN": "cn_custom_watchlist",
+    "HK": "hk_custom_watchlist",
+}
 
 # Baseline approximate diluted shares outstanding (in billions of shares)
 # Used to dynamically compute accurate Market Cap = price * shares if fast_info is rate-limited
 APPROX_SHARES_BILLIONS: Dict[str, float] = {
+    # --- US Equities ---
     "AAPL": 15.12,
     "MSFT": 7.43,
     "NVDA": 24.48,
@@ -85,11 +100,91 @@ APPROX_SHARES_BILLIONS: Dict[str, float] = {
     "AMT": 0.467,
     "LIN": 0.477,
     "FCX": 1.44,
+    # --- China A-Shares (CNY total shares in billions) ---
+    "600519.SS": 1.256,
+    "000858.SZ": 3.882,
+    "600887.SS": 6.366,
+    "603288.SS": 5.561,
+    "300750.SZ": 4.403,
+    "300274.SZ": 2.073,
+    "600406.SS": 8.033,
+    "601668.SS": 41.62,
+    "601919.SS": 15.96,
+    "002352.SZ": 4.816,
+    "601398.SS": 356.41,
+    "601288.SS": 349.98,
+    "600036.SS": 25.22,
+    "601318.SS": 18.21,
+    "600030.SS": 14.82,
+    "300059.SZ": 15.79,
+    "688981.SS": 7.97,
+    "601138.SS": 19.86,
+    "002415.SZ": 9.233,
+    "002475.SZ": 7.226,
+    "002371.SZ": 0.533,
+    "300308.SZ": 1.121,
+    "002230.SZ": 2.312,
+    "688041.SS": 2.324,
+    "601012.SS": 7.578,
+    "002594.SZ": 2.909,
+    "000333.SZ": 7.65,
+    "000651.SZ": 5.631,
+    "601888.SS": 2.069,
+    "300760.SZ": 1.212,
+    "600276.SS": 6.379,
+    "603259.SS": 2.912,
+    "600941.SS": 21.45,
+    "601728.SS": 91.51,
+    "002027.SZ": 14.44,
+    "601857.SS": 183.02,
+    "601088.SS": 19.87,
+    "600028.SS": 121.74,
+    "600900.SS": 24.468,
+    "601985.SS": 18.88,
+    "601899.SS": 26.58,
+    "600309.SS": 3.14,
+    "600048.SS": 11.97,
+    "001979.SZ": 9.061,
+    # --- Hong Kong Equities (HKD total shares in billions) ---
+    "0700.HK": 9.28,
+    "0941.HK": 21.45,
+    "9999.HK": 3.22,
+    "9888.HK": 2.80,
+    "1024.HK": 4.33,
+    "9988.HK": 19.16,
+    "3690.HK": 6.08,
+    "1211.HK": 2.909,
+    "9618.HK": 2.94,
+    "9961.HK": 0.68,
+    "2015.HK": 2.12,
+    "9868.HK": 1.90,
+    "0175.HK": 10.07,
+    "2020.HK": 2.83,
+    "1810.HK": 24.95,
+    "0981.HK": 7.97,
+    "0992.HK": 12.40,
+    "0005.HK": 18.15,
+    "0939.HK": 250.01,
+    "1299.HK": 11.02,
+    "0388.HK": 1.268,
+    "2318.HK": 18.21,
+    "0883.HK": 47.53,
+    "1088.HK": 19.87,
+    "9633.HK": 11.25,
+    "0291.HK": 3.244,
+    "2269.HK": 4.15,
+    "1093.HK": 11.83,
+    "0001.HK": 3.83,
+    "0669.HK": 1.83,
+    "0002.HK": 2.526,
+    "0016.HK": 2.898,
+    "1109.HK": 7.131,
+    "2899.HK": 26.58,
 }
 
 
 class MarketDataFetcher:
-    """Fetches, enriches, and caches US equity and index market data."""
+    """Fetches, enriches, and caches US, China A-Share, and Hong Kong market data."""
 
     def __init__(
         self,
@@ -104,11 +199,17 @@ class MarketDataFetcher:
     def _load_universe_config(self) -> Dict[str, Any]:
         with open(self.config_path, "r", encoding="utf-8") as f:
             config = json.load(f)
-        # Merge any user-customized watchlist saved in SQLite app_meta
-        saved_custom = self.cache.get_meta("custom_watchlist_tickers")
-        if saved_custom and isinstance(saved_custom, list):
-            if "custom_watchlist" in config.get("universes", {}):
-                config["universes"]["custom_watchlist"]["tickers"] = saved_custom
+        # Merge any user-customized watchlists saved in SQLite app_meta (per market)
+        for mkt, uid in MARKET_CUSTOM_WATCHLIST_IDS.items():
+            meta_key = (
+                "custom_watchlist_tickers"
+                if mkt == "US"
+                else f"custom_watchlist_tickers_{mkt}"
+            )
+            saved_custom = self.cache.get_meta(meta_key)
+            if saved_custom and isinstance(saved_custom, list):
+                if uid in config.get("universes", {}):
+                    config["universes"][uid]["tickers"] = saved_custom
         saved_stocks = self.cache.get_meta("custom_stocks_meta")
         if saved_stocks and isinstance(saved_stocks, dict):
             config.setdefault("stocks", {}).update(saved_stocks)
@@ -118,37 +219,105 @@ class MarketDataFetcher:
         self.universe_config = self._load_universe_config()
         return self.universe_config
 
-    def get_universes_summary(self) -> List[Dict[str, Any]]:
-        """Return list of available stock universes and their metadata."""
+    def get_markets_summary(self) -> List[Dict[str, Any]]:
+        """Return metadata for all supported markets (US, CN, HK)."""
+        self.reload_config()
+        markets = self.universe_config.get("markets", {})
+        result = []
+        for mid, mdata in markets.items():
+            result.append(
+                {
+                    "id": mid,
+                    "name_en": mdata.get("name_en", mid),
+                    "name_zh": mdata.get("name_zh", mid),
+                    "short_en": mdata.get("short_en", mid),
+                    "short_zh": mdata.get("short_zh", mid),
+                    "currency": mdata.get("currency", "USD"),
+                    "currency_symbol": mdata.get("currency_symbol", "$"),
+                    "default_universe": mdata.get("default_universe", "sp500_core"),
+                }
+            )
+        return result
+
+    def get_universes_summary(
+        self, market: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Return list of available stock universes and their metadata (optionally filtered by market)."""
         self.reload_config()
         universes = self.universe_config.get("universes", {})
         result = []
         for uid, udata in universes.items():
+            u_market = udata.get("market", "US")
+            if isinstance(market, str) and market and u_market.upper() != market.upper():
+                continue
             result.append(
                 {
                     "id": uid,
+                    "market": u_market,
                     "name": udata.get("name", uid),
                     "name_zh": udata.get("name_zh", udata.get("name", uid)),
                     "name_en": udata.get("name_en", udata.get("name", uid)),
                     "description": udata.get("description", ""),
-                    "description_zh": udata.get("description_zh", udata.get("description", "")),
-                    "description_en": udata.get("description_en", udata.get("description", "")),
+                    "description_zh": udata.get(
+                        "description_zh", udata.get("description", "")
+                    ),
+                    "description_en": udata.get(
+                        "description_en", udata.get("description", "")
+                    ),
                     "count": len(udata.get("tickers", [])),
                     "tickers": udata.get("tickers", []),
                 }
             )
         return result
 
+    @staticmethod
+    def normalize_ticker_for_market(raw_ticker: str, market: str = "US") -> str:
+        """Normalize user-entered ticker symbol according to market convention."""
+        sym = str(raw_ticker).strip().upper()
+        if not sym:
+            return ""
+        mkt = market.upper()
+        if mkt == "CN":
+            # Support bare 6-digit A-share codes like 600519 -> 600519.SS, 300750 -> 300750.SZ
+            if sym.isdigit() and len(sym) == 6:
+                if sym.startswith(("6", "5", "9")):
+                    return f"{sym}.SS"
+                return f"{sym}.SZ"
+            if sym.endswith(".SH"):
+                return sym[:-3] + ".SS"
+            return sym
+        if mkt == "HK":
+            # Support bare numeric HK codes like 700 -> 0700.HK, 9988 -> 9988.HK
+            if sym.endswith(".HK"):
+                code_part = sym[:-3]
+                if code_part.isdigit() and len(code_part) < 4:
+                    return f"{code_part.zfill(4)}.HK"
+                return sym
+            if sym.isdigit():
+                return f"{sym.zfill(4)}.HK"
+            return sym
+        # Default US
+        return sym.replace(".", "-")
+
     def update_custom_watchlist(
-        self, tickers: List[str], new_stock_meta: Optional[Dict[str, Any]] = None
+        self,
+        tickers: List[str],
+        new_stock_meta: Optional[Dict[str, Any]] = None,
+        market: str = "US",
     ) -> List[str]:
-        """Update custom_watchlist tickers in SQLite metadata and reload config."""
+        """Update custom watchlist tickers for a specific market (US / CN / HK) in SQLite metadata."""
+        mkt = market.upper() if market.upper() in MARKET_CUSTOM_WATCHLIST_IDS else "US"
         cleaned = []
         for t in tickers:
-            sym = str(t).strip().upper().replace(".", "-")
+            sym = self.normalize_ticker_for_market(t, market=mkt)
             if sym and sym not in cleaned:
                 cleaned.append(sym)
-        self.cache.set_meta("custom_watchlist_tickers", cleaned)
+        meta_key = (
+            "custom_watchlist_tickers"
+            if mkt == "US"
+            else f"custom_watchlist_tickers_{mkt}"
+        )
+        self.cache.set_meta(meta_key, cleaned)
         if new_stock_meta:
             existing_meta = self.cache.get_meta("custom_stocks_meta", {}) or {}
             existing_meta.update(new_stock_meta)
@@ -156,93 +325,135 @@ class MarketDataFetcher:
         self.reload_config()
         return cleaned
 
-    @staticmethod
-    def get_us_market_session_info(
+    @classmethod
+    def get_market_session_info(
+        cls,
+        market: str = "US",
         reference_trading_date: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Determine US Eastern Time market status (INTRADAY, PRE_MARKET, AFTER_HOURS, CLOSED)
-        and candidate trading date string.
+        Determine market session status (INTRADAY, PRE_MARKET, LUNCH_BREAK, AFTER_HOURS, CLOSED)
+        and candidate trading date in the market's native timezone (ET / CST / HKT).
         """
-        now_utc = datetime.now(timezone.utc)
-        now_et = now_utc.astimezone(ET_ZONE)
-        now_local = datetime.now()
-        weekday = now_et.weekday()  # 0=Mon .. 6=Sun
-        current_time = now_et.time()
+        mkt = market.upper() if market.upper() in MARKET_TIMEZONES else "US"
+        tz, tz_abbr = MARKET_TIMEZONES[mkt]
 
-        market_open = time(9, 30)
-        market_close = time(16, 0)
-        pre_open = time(4, 0)
-        after_close = time(20, 0)
+        now_utc = datetime.now(timezone.utc)
+        now_mkt = now_utc.astimezone(tz)
+        now_local = datetime.now()
+        weekday = now_mkt.weekday()  # 0=Mon .. 6=Sun
+        current_time = now_mkt.time()
+
+        market_prefix_zh = {"US": "美股", "CN": "A股", "HK": "港股"}[mkt]
+        market_prefix_en = {"US": "US Market", "CN": "China A-Shares", "HK": "HK Market"}[mkt]
+
+        if mkt == "US":
+            market_open = time(9, 30)
+            market_close = time(16, 0)
+            pre_open = time(4, 0)
+            after_close = time(20, 0)
+            is_lunch = False
+        elif mkt == "CN":
+            market_open = time(9, 30)
+            market_close = time(15, 0)
+            pre_open = time(9, 15)
+            after_close = time(15, 30)
+            is_lunch = time(11, 30) <= current_time < time(13, 0)
+        else:  # HK
+            market_open = time(9, 30)
+            market_close = time(16, 0)
+            pre_open = time(9, 0)
+            after_close = time(16, 30)
+            is_lunch = time(12, 0) <= current_time < time(13, 0)
 
         if weekday >= 5:
             session_code = "WEEKEND_CLOSED"
-            session_label = "周末休市 · 已回溯最近交易日收盘"
-            session_label_en = "Weekend Closed · Rolled Back to Last Close"
+            session_label = f"{market_prefix_zh}周末休市 · 已回溯最近交易日收盘"
+            session_label_en = f"{market_prefix_en} Weekend Closed · Rolled Back to Last Close"
             is_intraday = False
+        elif is_lunch:
+            session_code = "LUNCH_BREAK"
+            session_label = f"{market_prefix_zh}午间休市 · 早盘行情快照"
+            session_label_en = f"{market_prefix_en} Midday Break · Morning Session Snapshot"
+            is_intraday = True
         elif market_open <= current_time < market_close:
             session_code = "INTRADAY"
-            session_label = "美股盘中交易 · 实时行情快照"
-            session_label_en = "US Market Open · Live Intraday Snapshot"
+            session_label = f"{market_prefix_zh}盘中交易 · 实时行情快照"
+            session_label_en = f"{market_prefix_en} Open · Live Intraday Snapshot"
             is_intraday = True
         elif pre_open <= current_time < market_open:
             session_code = "PRE_MARKET"
-            session_label = "美股盘前时段 · 已回溯最近交易日收盘"
-            session_label_en = "Pre-Market · Rolled Back to Previous Close"
+            session_label = f"{market_prefix_zh}盘前时段 · 已回溯最近交易日收盘"
+            session_label_en = f"{market_prefix_en} Pre-Market · Rolled Back to Previous Close"
             is_intraday = False
         elif market_close <= current_time < after_close:
             session_code = "AFTER_HOURS"
-            session_label = "美股盘后时段 · 当日收盘快照"
-            session_label_en = "After-Hours · Today's Closing Snapshot"
+            session_label = f"{market_prefix_zh}盘后收盘 · 当日收盘快照"
+            session_label_en = f"{market_prefix_en} After-Hours · Today's Closing Snapshot"
             is_intraday = False
         else:
             session_code = "OVERNIGHT_CLOSED"
-            session_label = "美股夜间休市 · 已回溯最近交易日收盘"
-            session_label_en = "Overnight Closed · Rolled Back to Last Close"
+            session_label = f"{market_prefix_zh}休市时段 · 已回溯最近交易日收盘"
+            session_label_en = f"{market_prefix_en} Closed · Rolled Back to Last Close"
             is_intraday = False
 
-        # Candidate calendar date before holiday verification
-        if weekday == 5:  # Saturday -> Friday
-            candidate_dt = now_et.date() - pd.Timedelta(days=1)
-        elif weekday == 6:  # Sunday -> Friday
-            candidate_dt = now_et.date() - pd.Timedelta(days=2)
-        elif weekday == 0 and current_time < market_open:  # Monday pre-open -> Friday
-            candidate_dt = now_et.date() - pd.Timedelta(days=3)
-        elif current_time < market_open:  # Tue-Fri pre-open -> yesterday
-            candidate_dt = now_et.date() - pd.Timedelta(days=1)
+        if weekday == 5:
+            candidate_dt = now_mkt.date() - pd.Timedelta(days=1)
+        elif weekday == 6:
+            candidate_dt = now_mkt.date() - pd.Timedelta(days=2)
+        elif weekday == 0 and current_time < market_open:
+            candidate_dt = now_mkt.date() - pd.Timedelta(days=3)
+        elif current_time < market_open:
+            candidate_dt = now_mkt.date() - pd.Timedelta(days=1)
         else:
-            candidate_dt = now_et.date()
+            candidate_dt = now_mkt.date()
 
         effective_date = reference_trading_date or str(candidate_dt)
-        # If today is a weekday intraday time on the clock, but the actual market bar date
-        # is earlier than today's date, then today is a US Market Holiday!
         if (
             reference_trading_date
             and weekday < 5
             and current_time >= market_open
-            and reference_trading_date < str(now_et.date())
+            and reference_trading_date < str(now_mkt.date())
         ):
             session_code = "HOLIDAY_CLOSED"
-            session_label = "美股节假日休市 · 已回溯最近交易日收盘"
-            session_label_en = "Market Holiday · Rolled Back to Last Close"
+            session_label = f"{market_prefix_zh}节假日休市 · 已回溯最近交易日收盘"
+            session_label_en = f"{market_prefix_en} Holiday · Rolled Back to Last Close"
             is_intraday = False
 
+        formatted_mkt_time = now_mkt.strftime(f"%Y-%m-%d %H:%M:%S {tz_abbr}")
+
         return {
+            "market": mkt,
             "trading_date": effective_date,
             "session_code": session_code,
             "session_label": session_label,
             "session_label_zh": session_label,
             "session_label_en": session_label_en,
             "is_intraday": is_intraday,
-            "et_time": now_et.strftime("%Y-%m-%d %H:%M:%S ET"),
+            "market_time": formatted_mkt_time,
+            "et_time": formatted_mkt_time,
             "local_time": now_local.strftime("%Y-%m-%d %H:%M:%S"),
         }
 
-    def _detect_latest_trading_date_from_spy(self) -> Optional[str]:
-        """Quickly probe ^GSPC or SPY 10-day history to confirm exact latest US trading day."""
+    @classmethod
+    def get_us_market_session_info(
+        cls,
+        reference_trading_date: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Backward-compatible helper for US market session detection."""
+        return cls.get_market_session_info(
+            market="US", reference_trading_date=reference_trading_date
+        )
+
+    def _detect_latest_trading_date(self, market: str = "US") -> Optional[str]:
+        """Quickly probe market benchmark index 10-day history to confirm exact latest trading day."""
+        markets_cfg = self.universe_config.get("markets", {})
+        probe_ticker = (
+            markets_cfg.get(market.upper(), {}).get("probe_ticker") or "^GSPC"
+        )
         try:
             df = yf.download(
-                "^GSPC",
+                probe_ticker,
                 period="10d",
                 interval="1d",
                 progress=False,
@@ -253,7 +464,7 @@ class MarketDataFetcher:
                 last_ts = pd.Timestamp(df.index[-1])
                 return last_ts.strftime("%Y-%m-%d")
         except Exception as exc:
-            logger.warning("Probe ^GSPC trading date failed: %s", exc)
+            logger.warning("Probe %s trading date failed: %s", probe_ticker, exc)
         return None
 
     def _fetch_market_caps_concurrent(
@@ -271,14 +482,15 @@ class MarketDataFetcher:
         def _fetch_one(sym: str) -> Tuple[str, Optional[float]]:
             try:
                 fi = yf.Ticker(sym).fast_info
-                mc = fi.get("market_cap") or fi.get("marketCap")
+                mc = getattr(fi, "market_cap", None)
+                if not mc and hasattr(fi, "get"):
+                    mc = fi.get("market_cap") or fi.get("marketCap")
                 if mc and float(mc) > 0:
                     return sym, float(mc)
             except Exception:
                 pass
             return sym, None
 
-        # Only query network for tickers that don't have fresh cached shares or when refreshing
         with ThreadPoolExecutor(max_workers=10) as pool:
             futures = {pool.submit(_fetch_one, t): t for t in tickers}
             for fut in as_completed(futures):
@@ -289,14 +501,13 @@ class MarketDataFetcher:
                     if price > 0:
                         cached_shares[sym] = mc / price
                 else:
-                    # Fallback to cached shares or baseline shares
                     shares = cached_shares.get(sym)
                     if not shares and sym in APPROX_SHARES_BILLIONS:
                         shares = APPROX_SHARES_BILLIONS[sym] * 1e9
                     if shares and price > 0:
                         market_caps[sym] = float(shares * price)
                     else:
-                        market_caps[sym] = 50e9  # safe default $50B
+                        market_caps[sym] = 50e9
 
         self.cache.set_meta("shares_outstanding_map", cached_shares)
         return market_caps
@@ -311,7 +522,6 @@ class MarketDataFetcher:
         try:
             if single_ticker:
                 if isinstance(raw_df.columns, pd.MultiIndex):
-                    # In newer yfinance (1.x), single ticker may still have MultiIndex (Price, Ticker)
                     if ticker in raw_df.columns.get_level_values(-1):
                         sub = raw_df.xs(ticker, axis=1, level=-1).copy()
                     elif ticker in raw_df.columns.get_level_values(0):
@@ -339,10 +549,18 @@ class MarketDataFetcher:
             return None
 
     def fetch_indices_snapshot(
-        self, trading_date: str, force_refresh: bool = False
+        self,
+        trading_date: str,
+        force_refresh: bool = False,
+        market: str = "US",
     ) -> List[Dict[str, Any]]:
-        """Fetch major US market indices (^GSPC, ^IXIC, ^DJI, ^RUT, ^VIX)."""
-        indices_cfg = self.universe_config.get("indices", [])
+        """Fetch benchmark indices for the specified market (US / CN / HK)."""
+        mkt = market.upper()
+        markets_cfg = self.universe_config.get("markets", {})
+        indices_cfg = (
+            markets_cfg.get(mkt, {}).get("indices")
+            or self.universe_config.get("indices", [])
+        )
         idx_tickers = [item["ticker"] for item in indices_cfg]
         if not idx_tickers:
             return []
@@ -357,6 +575,7 @@ class MarketDataFetcher:
                         rec = dict(cached[t])
                         rec["name_en"] = item.get("name_en", item.get("name", t))
                         rec["name_zh"] = item.get("name_zh", item.get("name", t))
+                        rec["market"] = mkt
                         out.append(rec)
                 return out
 
@@ -384,27 +603,30 @@ class MarketDataFetcher:
                 prev_close = float(prev["Close"])
                 change = price - prev_close
                 change_pct = (change / prev_close * 100.0) if prev_close else 0.0
+                decimals = 3 if price < 10.0 else 2
                 results.append(
                     {
                         "ticker": sym,
+                        "market": mkt,
                         "name": item.get("name", sym),
                         "name_en": item.get("name_en", item.get("name", sym)),
                         "name_zh": item.get("name_zh", item.get("name", sym)),
                         "short_name": item.get("short_name", sym),
-                        "price": round(price, 2),
-                        "prev_close": round(prev_close, 2),
-                        "change": round(change, 2),
+                        "price": round(price, decimals),
+                        "prev_close": round(prev_close, decimals),
+                        "change": round(change, decimals),
                         "change_pct": round(change_pct, 2),
-                        "trading_date": pd.Timestamp(tdf.index[-1]).strftime("%Y-%m-%d"),
+                        "trading_date": pd.Timestamp(tdf.index[-1]).strftime(
+                            "%Y-%m-%d"
+                        ),
                     }
                 )
             if results:
                 self.cache.save_indices(trading_date, results)
                 return results
         except Exception as exc:
-            logger.warning("Failed to fetch indices from yfinance: %s", exc)
+            logger.warning("Failed to fetch %s indices from yfinance: %s", mkt, exc)
 
-        # Fallback to latest cached indices
         cached = self.cache.get_indices(trading_date, idx_tickers)
         return [cached[t] for t in idx_tickers if t in cached]
 
@@ -412,19 +634,31 @@ class MarketDataFetcher:
         self,
         universe_id: Optional[str] = None,
         force_refresh: bool = False,
+        market: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Main entrypoint to fetch and compute all metrics for a selected universe.
-        Returns a rich dictionary containing:
-        - session_info (trading_date, session_label, cache_source, timestamps)
-        - indices (SPX, IXIC, DJI, RUT, VIX)
-        - records (list of enriched stock dicts)
-        - dataframe (pandas DataFrame for analyzers)
+        Main entrypoint to fetch and compute all metrics for a selected universe & market.
         """
         self.reload_config()
         universes = self.universe_config.get("universes", {})
-        default_uid = self.universe_config.get("default_universe", "sp500_core")
-        uid = universe_id if universe_id in universes else default_uid
+        markets_cfg = self.universe_config.get("markets", {})
+
+        # Resolve universe_id and market
+        if isinstance(universe_id, str) and universe_id in universes:
+            uid = universe_id
+            mkt = universes[uid].get("market", "US").upper()
+        elif isinstance(market, str) and market.upper() in markets_cfg:
+            mkt = market.upper()
+            uid = markets_cfg[mkt].get("default_universe", "sp500_core")
+        else:
+            default_uid = self.universe_config.get("default_universe", "sp500_core")
+            uid = default_uid if default_uid in universes else "sp500_core"
+            mkt = universes[uid].get("market", "US").upper()
+
+        market_meta = markets_cfg.get(mkt, markets_cfg.get("US", {}))
+        currency_code = market_meta.get("currency", "USD")
+        currency_symbol = market_meta.get("currency_symbol", "$")
+
         universe_obj = universes[uid]
         tickers: List[str] = [
             str(t).upper() for t in universe_obj.get("tickers", [])
@@ -432,35 +666,48 @@ class MarketDataFetcher:
         stocks_meta = self.universe_config.get("stocks", {})
         sector_meta = self.universe_config.get("sector_meta", {})
 
-        # Step 1: Determine expected trading date
-        session_guess = self.get_us_market_session_info()
-        cached_date = self.cache.get_latest_cached_trading_date()
+        # Step 1: Determine expected trading date for this specific market
+        session_guess = self.get_market_session_info(market=mkt)
+        cached_date = self.cache.get_latest_cached_trading_date(tickers=tickers)
 
-        # If not forcing refresh and we already have a cached trading date matching the expected date
-        # (or if we aren't intraday and have a recent cache), check if all tickers are cached!
         target_date = session_guess["trading_date"]
         if not force_refresh and cached_date:
-            # If the calendar guess is a holiday or matches cached_date, check cache first
             cached_records = self.cache.get_equities(cached_date, tickers)
             if (
                 len(cached_records) == len(tickers)
                 and cached_date >= target_date
                 and not session_guess["is_intraday"]
             ):
-                session_info = self.get_us_market_session_info(cached_date)
+                session_info = self.get_market_session_info(
+                    market=mkt, reference_trading_date=cached_date
+                )
                 session_info["data_source"] = "SQLite Local Cache"
                 session_info["cache_hit"] = True
+                session_info["currency"] = currency_code
+                session_info["currency_symbol"] = currency_symbol
                 session_info["cached_at"] = next(
                     iter(cached_records.values())
                 ).get("_cached_at", session_info["local_time"])
                 indices_data = self.fetch_indices_snapshot(
-                    cached_date, force_refresh=False
+                    cached_date, force_refresh=False, market=mkt
                 )
-                ordered_records = [cached_records[t] for t in tickers if t in cached_records]
+                ordered_records = [
+                    cached_records[t] for t in tickers if t in cached_records
+                ]
                 return {
+                    "market": market_meta,
                     "universe": {
                         "id": uid,
+                        "market": mkt,
+                        "currency": currency_code,
+                        "currency_symbol": currency_symbol,
                         "name": universe_obj.get("name", uid),
+                        "name_en": universe_obj.get(
+                            "name_en", universe_obj.get("name", uid)
+                        ),
+                        "name_zh": universe_obj.get(
+                            "name_zh", universe_obj.get("name", uid)
+                        ),
                         "description": universe_obj.get("description", ""),
                         "count": len(ordered_records),
                     },
@@ -469,12 +716,10 @@ class MarketDataFetcher:
                     "records": ordered_records,
                 }
 
-        # Confirm actual trading date via quick probe if needed
-        probed_date = self._detect_latest_trading_date_from_spy()
+        probed_date = self._detect_latest_trading_date(market=mkt)
         if probed_date:
             target_date = probed_date
 
-        # Check cache for target_date before downloading missing tickers
         cached_for_target: Dict[str, Dict[str, Any]] = {}
         if not force_refresh:
             cached_for_target = self.cache.get_equities(target_date, tickers)
@@ -491,8 +736,9 @@ class MarketDataFetcher:
 
         if missing_tickers:
             logger.info(
-                "Fetching 1Y history from Yahoo Finance for %d tickers...",
+                "Fetching 1Y history from Yahoo Finance for %d %s tickers...",
                 len(missing_tickers),
+                mkt,
             )
             try:
                 raw_df = yf.download(
@@ -517,14 +763,12 @@ class MarketDataFetcher:
                         latest_prices[sym] = float(tdf.iloc[-1]["Close"])
 
                 if extracted_dfs:
-                    # Determine canonical latest trading date from the majority of tickers
                     dates_found = [
                         pd.Timestamp(df.index[-1]).strftime("%Y-%m-%d")
                         for df in extracted_dfs.values()
                     ]
                     actual_trading_date = max(set(dates_found), key=dates_found.count)
 
-                    # Fetch Market Caps concurrently
                     market_caps = self._fetch_market_caps_concurrent(
                         list(extracted_dfs.keys()), latest_prices
                     )
@@ -537,15 +781,16 @@ class MarketDataFetcher:
                             meta=stocks_meta.get(sym, {}),
                             sector_meta=sector_meta,
                             trading_date=actual_trading_date,
+                            market=mkt,
+                            currency_code=currency_code,
+                            currency_symbol=currency_symbol,
                         )
                         fetched_records.append(rec)
 
-                    # Save newly fetched records to SQLite cache
                     self.cache.save_equities(actual_trading_date, fetched_records)
             except Exception as exc:
                 logger.error("Error fetching batch data from yfinance: %s", exc)
 
-        # Combine cached + freshly fetched records
         all_records_map: Dict[str, Dict[str, Any]] = {}
         if actual_trading_date != target_date and not force_refresh:
             all_records_map.update(
@@ -557,7 +802,6 @@ class MarketDataFetcher:
         for r in fetched_records:
             all_records_map[r["ticker"]] = r
 
-        # Fallback to most recent cached trading date if network failed completely
         if not all_records_map and cached_date:
             actual_trading_date = cached_date
             all_records_map = self.cache.get_equities(cached_date, tickers)
@@ -566,7 +810,11 @@ class MarketDataFetcher:
             all_records_map[t] for t in tickers if t in all_records_map
         ]
 
-        session_info = self.get_us_market_session_info(actual_trading_date)
+        session_info = self.get_market_session_info(
+            market=mkt, reference_trading_date=actual_trading_date
+        )
+        session_info["currency"] = currency_code
+        session_info["currency_symbol"] = currency_symbol
         if used_network and len(fetched_records) == len(tickers):
             session_info["data_source"] = "Yahoo Finance Live -> SQLite"
             session_info["cache_hit"] = False
@@ -578,13 +826,19 @@ class MarketDataFetcher:
             session_info["cache_hit"] = True
 
         indices_data = self.fetch_indices_snapshot(
-            actual_trading_date, force_refresh=force_refresh
+            actual_trading_date, force_refresh=force_refresh, market=mkt
         )
 
         return {
+            "market": market_meta,
             "universe": {
                 "id": uid,
+                "market": mkt,
+                "currency": currency_code,
+                "currency_symbol": currency_symbol,
                 "name": universe_obj.get("name", uid),
+                "name_en": universe_obj.get("name_en", universe_obj.get("name", uid)),
+                "name_zh": universe_obj.get("name_zh", universe_obj.get("name", uid)),
                 "description": universe_obj.get("description", ""),
                 "count": len(ordered_records),
             },
@@ -601,6 +855,9 @@ class MarketDataFetcher:
         meta: Dict[str, Any],
         sector_meta: Dict[str, Any],
         trading_date: str,
+        market: str = "US",
+        currency_code: str = "USD",
+        currency_symbol: str = "$",
     ) -> Dict[str, Any]:
         """Compute all required financial & technical metrics for a single ticker."""
         latest = tdf.iloc[-1]
@@ -609,26 +866,36 @@ class MarketDataFetcher:
         price = float(latest["Close"])
         prev_close = float(prev["Close"])
         open_p = float(latest["Open"]) if not pd.isna(latest["Open"]) else price
-        high_p = float(latest["High"]) if not pd.isna(latest["High"]) else max(price, open_p)
-        low_p = float(latest["Low"]) if not pd.isna(latest["Low"]) else min(price, open_p)
-        # Ensure high >= price >= low
+        high_p = (
+            float(latest["High"])
+            if not pd.isna(latest["High"])
+            else max(price, open_p)
+        )
+        low_p = (
+            float(latest["Low"])
+            if not pd.isna(latest["Low"])
+            else min(price, open_p)
+        )
         high_p = max(high_p, price, open_p)
         low_p = min(low_p, price, open_p)
 
         volume = int(float(latest["Volume"])) if not pd.isna(latest["Volume"]) else 0
 
-        # 20-day Average Volume (prior 20 sessions or available sessions up to 20)
         vol_series = tdf["Volume"].dropna()
         if len(vol_series) > 1:
-            # Use the trailing 20 sessions excluding current if len >= 21, or last 20
-            hist_vols = vol_series.iloc[-21:-1] if len(vol_series) >= 21 else vol_series.iloc[:-1]
-            avg_vol_20d = float(hist_vols.mean()) if len(hist_vols) > 0 else float(volume)
+            hist_vols = (
+                vol_series.iloc[-21:-1]
+                if len(vol_series) >= 21
+                else vol_series.iloc[:-1]
+            )
+            avg_vol_20d = (
+                float(hist_vols.mean()) if len(hist_vols) > 0 else float(volume)
+            )
         else:
             avg_vol_20d = float(volume) if volume > 0 else 1.0
 
         rvol = (volume / avg_vol_20d) if avg_vol_20d > 0 else 1.0
 
-        # 52-Week High and Low across the 1-year history (~252 trading days)
         high_series = tdf["High"].dropna()
         low_series = tdf["Low"].dropna()
         high_52w = float(high_series.max()) if not high_series.empty else high_p
@@ -639,20 +906,19 @@ class MarketDataFetcher:
         change = price - prev_close
         change_pct = (change / prev_close * 100.0) if prev_close > 0 else 0.0
 
-        # Intraday Amplitude (%) and Intraday Position (0% = Low, 100% = High)
         intraday_range_pct = (
             (high_p - low_p) / prev_close * 100.0 if prev_close > 0 else 0.0
         )
         intraday_span = high_p - low_p
         intraday_pos_pct = (
-            (price - low_p) / intraday_span * 100.0 if intraday_span > 1e-9 else 50.0
+            (price - low_p) / intraday_span * 100.0
+            if intraday_span > 1e-9
+            else 50.0
         )
 
-        # Drawdown from 52W High (%) -> negative or 0.0 (e.g. -12.4%)
         drawdown_52w_pct = (
             (price - high_52w) / high_52w * 100.0 if high_52w > 0 else 0.0
         )
-        # Position within 52W Range (0% = 52W Low, 100% = 52W High)
         span_52w = high_52w - low_52w
         pos_52w_pct = (
             (price - low_52w) / span_52w * 100.0 if span_52w > 1e-9 else 50.0
@@ -660,7 +926,6 @@ class MarketDataFetcher:
 
         turnover = price * volume
 
-        # Last 20 trading days close sparkline
         closes_20d = [
             round(float(x), 2) for x in tdf["Close"].dropna().iloc[-20:].tolist()
         ]
@@ -672,6 +937,9 @@ class MarketDataFetcher:
 
         return {
             "ticker": sym,
+            "market": market,
+            "currency": currency_code,
+            "currency_symbol": currency_symbol,
             "name": name_en,
             "cn_name": name_cn,
             "sector": sector_en,
@@ -687,7 +955,7 @@ class MarketDataFetcher:
             "change_pct": round(change_pct, 2),
             "market_cap": round(market_cap, 0),
             "market_cap_b": round(market_cap / 1e9, 2),
-            "market_cap_fmt": self.format_market_cap(market_cap),
+            "market_cap_fmt": self.format_market_cap(market_cap, currency_symbol),
             "volume": volume,
             "volume_fmt": self.format_volume(volume),
             "avg_volume_20d": round(avg_vol_20d, 0),
@@ -695,7 +963,7 @@ class MarketDataFetcher:
             "rvol": round(rvol, 2),
             "turnover": round(turnover, 0),
             "turnover_b": round(turnover / 1e9, 2),
-            "turnover_fmt": self.format_market_cap(turnover),
+            "turnover_fmt": self.format_market_cap(turnover, currency_symbol),
             "intraday_range_pct": round(intraday_range_pct, 2),
             "intraday_pos_pct": round(float(np.clip(intraday_pos_pct, 0.0, 100.0)), 1),
             "high_52w": round(high_52w, 2),
@@ -706,14 +974,14 @@ class MarketDataFetcher:
         }
 
     @staticmethod
-    def format_market_cap(val: float) -> str:
+    def format_market_cap(val: float, currency_symbol: str = "$") -> str:
         if val >= 1e12:
-            return f"${val / 1e12:.2f}T"
+            return f"{currency_symbol}{val / 1e12:.2f}T"
         if val >= 1e9:
-            return f"${val / 1e9:.2f}B"
+            return f"{currency_symbol}{val / 1e9:.2f}B"
         if val >= 1e6:
-            return f"${val / 1e6:.2f}M"
-        return f"${val:,.0f}"
+            return f"{currency_symbol}{val / 1e6:.2f}M"
+        return f"{currency_symbol}{val:,.0f}"
 
     @staticmethod
     def format_volume(val: float) -> str:

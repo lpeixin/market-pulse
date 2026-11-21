@@ -48,6 +48,11 @@ class OverviewSummaryAnalyzer(BaseAnalyzer):
 
         total_mcap = float(df["market_cap"].sum())
         total_turnover = float(df["turnover"].sum())
+        csym = (
+            str(df["currency_symbol"].iloc[0])
+            if "currency_symbol" in df.columns and not df.empty
+            else "$"
+        )
 
         if total_mcap > 0:
             cap_weighted_ret = float(
@@ -83,6 +88,7 @@ class OverviewSummaryAnalyzer(BaseAnalyzer):
         sector_rows.sort(key=lambda x: x["change_pct"], reverse=True)
 
         return {
+            "currency_symbol": csym,
             "total_stocks": total_stocks,
             "advancers": advancers,
             "decliners": decliners,
@@ -91,11 +97,13 @@ class OverviewSummaryAnalyzer(BaseAnalyzer):
             if total_stocks
             else 0.0,
             "total_market_cap": total_mcap,
-            "total_market_cap_fmt": f"${total_mcap / 1e12:.2f}T"
+            "total_market_cap_fmt": f"{csym}{total_mcap / 1e12:.2f}T"
             if total_mcap >= 1e12
-            else f"${total_mcap / 1e9:.2f}B",
+            else f"{csym}{total_mcap / 1e9:.2f}B",
             "total_turnover": total_turnover,
-            "total_turnover_fmt": f"${total_turnover / 1e9:.2f}B",
+            "total_turnover_fmt": f"{csym}{total_turnover / 1e12:.2f}T"
+            if total_turnover >= 1e12
+            else f"{csym}{total_turnover / 1e9:.2f}B",
             "cap_weighted_return_pct": round(cap_weighted_ret, 2),
             "equal_weighted_return_pct": round(equal_weighted_ret, 2),
             "median_return_pct": round(median_ret, 2),

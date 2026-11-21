@@ -64,6 +64,7 @@ fetcher = MarketDataFetcher()
 
 class WatchlistUpdatePayload(BaseModel):
     tickers: List[str]
+    market: str = "US"
 
 
 @app.get("/", include_in_schema=False)
@@ -78,16 +79,20 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "MarketPulse",
-        "version": "1.0.0",
+        "version": "1.1.0",
+        "markets": ["US", "CN", "HK"],
         "plugins_loaded": len(AnalyzerRegistry.get_all_plugins_meta()),
     }
 
 
 @app.get("/api/universes")
-def api_get_universes() -> Dict[str, Any]:
-    """Return all configured stock universes and registered analyzer plugins."""
+def api_get_universes(
+    market: str = Query(None, description="Optional market filter (US / CN / HK)")
+) -> Dict[str, Any]:
+    """Return all configured markets, stock universes, and registered analyzer plugins."""
     return {
-        "universes": fetcher.get_universes_summary(),
+        "markets": fetcher.get_markets_summary(),
+        "universes": fetcher.get_universes_summary(market=market),
         "plugins": AnalyzerRegistry.get_all_plugins_meta(),
     }
 
@@ -95,21 +100,24 @@ def api_get_universes() -> Dict[str, Any]:
 @app.get("/api/dashboard")
 def api_get_dashboard(
     universe: str = Query("sp500_core", description="Stock universe ID"),
+    market: str = Query(None, description="Market ID (US / CN / HK)"),
     force_refresh: bool = Query(False, description="Force live fetch from Yahoo Finance"),
 ) -> JSONResponse:
     """
-    Fetch market data for the requested universe (using SQLite cache unless force_refresh=True)
+    Fetch market data for the requested universe/market (using SQLite cache unless force_refresh=True)
     and run all registered modular visual analyzers.
     """
     t0 = time.perf_counter()
     raw_bundle = fetcher.fetch_universe_data(
-        universe_id=universe, force_refresh=force_refresh
+        universe_id=universe, force_refresh=force_refresh, market=market
     )
     records = raw_bundle.get("records", [])
     widgets = AnalyzerRegistry.run_all(records)
     elapsed_ms = round((time.perf_counter() - t0) * 1000.0, 2)
 
     response_payload = {
+        "market": raw_bundle.get("market", {}),
+        "markets_list": fetcher.get_markets_summary(),
         "universe": raw_bundle["universe"],
         "universes_list": fetcher.get_universes_summary(),
         "session": {
@@ -126,11 +134,18 @@ def api_get_dashboard(
 
 @app.post("/api/watchlist")
 def api_update_watchlist(payload: WatchlistUpdatePayload) -> Dict[str, Any]:
-    """Update the tickers in custom_watchlist and persist to SQLite metadata."""
-    updated = fetcher.update_custom_watchlist(payload.tickers)
+    """Update the tickers in the market's custom watchlist and persist to SQLite metadata."""
+    mkt = (payload.market or "US").upper()
+    updated = fetcher.update_custom_watchlist(payload.tickers, market=mkt)
+    uid_map = {
+        "US": "custom_watchlist",
+        "CN": "cn_custom_watchlist",
+        "HK": "hk_custom_watchlist",
+    }
     return {
         "status": "ok",
-        "universe_id": "custom_watchlist",
+        "market": mkt,
+        "universe_id": uid_map.get(mkt, "custom_watchlist"),
         "tickers": updated,
         "count": len(updated),
     }

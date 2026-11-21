@@ -82,12 +82,21 @@ class MarketCache:
                     continue
         return results
 
-    def get_latest_cached_trading_date(self) -> Optional[str]:
-        """Return the most recent trading_date available in equity_snapshots."""
+    def get_latest_cached_trading_date(
+        self, tickers: Optional[List[str]] = None
+    ) -> Optional[str]:
+        """Return the most recent trading_date available in equity_snapshots (optionally scoped to tickers)."""
         with self._get_conn() as conn:
-            row = conn.execute(
-                "SELECT MAX(trading_date) AS max_date FROM equity_snapshots"
-            ).fetchone()
+            if tickers:
+                placeholders = ",".join(["?"] * len(tickers))
+                row = conn.execute(
+                    f"SELECT MAX(trading_date) AS max_date FROM equity_snapshots WHERE ticker IN ({placeholders})",
+                    tickers,
+                ).fetchone()
+            else:
+                row = conn.execute(
+                    "SELECT MAX(trading_date) AS max_date FROM equity_snapshots"
+                ).fetchone()
             if row and row["max_date"]:
                 return str(row["max_date"])
         return None

@@ -44,8 +44,15 @@
         </div>
       </div>
 
-      <!-- Right: Universe Selector, Watchlist Editor, Color Mode, Language Switcher, Plugins, Force Refresh -->
+      <!-- Right: Market Switcher, Universe Selector, Watchlist Editor, Color Mode, Language Switcher, Plugins, Force Refresh -->
       <div class="controls-group">
+        <!-- Top-Level Market Switcher (US / CN / HK) -->
+        <div class="market-switcher" id="market-switcher" role="group" aria-label="Market Switcher">
+          <button type="button" class="market-tab active" data-market="US" id="mkt-btn-US">US Market</button>
+          <button type="button" class="market-tab" data-market="CN" id="mkt-btn-CN">CN A-Shares</button>
+          <button type="button" class="market-tab" data-market="HK" id="mkt-btn-HK">HK Stocks</button>
+        </div>
+
         <div style="display: flex; align-items: center; gap: 6px;">
           <label for="universe-select" id="label-universe-select" style="font-size: 11.5px; color: var(--text-secondary); font-weight: 600;">Universe:</label>
           <select id="universe-select" class="terminal-select">

@@ -29,6 +29,11 @@ class MarketCapTreemapAnalyzer(BaseAnalyzer):
             return {"tree": [], "sector_summary": [], "color_domain": [-5.0, 5.0]}
 
         total_universe_mcap = float(df["market_cap"].sum())
+        csym = (
+            str(df["currency_symbol"].iloc[0])
+            if "currency_symbol" in df.columns and not df.empty
+            else "$"
+        )
         tree_nodes: List[Dict[str, Any]] = []
         sector_summary: List[Dict[str, Any]] = []
 
@@ -89,14 +94,15 @@ class MarketCapTreemapAnalyzer(BaseAnalyzer):
                     "name": sector_label,
                     "sector": sector_en,
                     "sector_cn": sector_cn,
+                    "currency_symbol": csym,
                     "value": sec_mcap_b,
                     "market_cap": sec_mcap,
                     "market_cap_b": sec_mcap_b,
-                    "market_cap_fmt": f"${sec_mcap / 1e12:.2f}T"
+                    "market_cap_fmt": f"{csym}{sec_mcap / 1e12:.2f}T"
                     if sec_mcap >= 1e12
-                    else f"${sec_mcap / 1e9:.2f}B",
+                    else f"{csym}{sec_mcap / 1e9:.2f}B",
                     "change_pct": round(sec_weighted_ret, 2),
-                    "turnover_fmt": f"${sec_turnover / 1e9:.2f}B",
+                    "turnover_fmt": f"{csym}{sec_turnover / 1e9:.2f}B",
                     "weight_pct": sec_weight_pct,
                     "stock_count": len(children),
                     "children": children,

@@ -4,7 +4,7 @@
 
 # MarketPulse
 
-**A Cross-Platform US Equity Quantitative Visualization Terminal**
+**A Cross-Platform Multi-Market (US · China A-Shares · Hong Kong) Quantitative Visualization Terminal**
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-38bdf8?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-10b981?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -23,7 +23,7 @@
 
 ## Overview
 
-**MarketPulse** is an institutional-grade, local cross-platform desktop financial terminal built for quantitative researchers, equity analysts, and active traders. Powered by **Python (`yfinance` + `pandas` + `SQLite`)**, **FastAPI**, **Apache ECharts 5**, and **PyWebView**, it automatically detects the latest US stock market trading session and renders a high-density, multi-dimensional visual dashboard without requiring paid API keys.
+**MarketPulse** is an institutional-grade, local cross-platform desktop financial terminal built for quantitative researchers, equity analysts, and active traders. Powered by **Python (`yfinance` + `pandas` + `SQLite`)**, **FastAPI**, **Apache ECharts 5**, and **PyWebView**, it automatically detects the latest trading session across **US Equities (`US`)**, **China A-Shares (`CN`)**, and **Hong Kong Stocks (`HK`)**, rendering a high-density, multi-dimensional visual dashboard without requiring paid API keys.
 
 Designed with a **modular plugin architecture (`analyzers/`)**, MarketPulse separates market data ingestion and caching from quantitative computation, allowing seamless expansion into historical drawdown backtesting, ETF fund flows, and volatility surface analytics.
 
@@ -45,14 +45,14 @@ Designed with a **modular plugin architecture (`analyzers/`)**, MarketPulse sepa
 
 ## Key Features
 
-### 1. Smart Trading Day Detection & Local SQLite Cache (`core/`)
-- **Session-Aware Rollback (`America/New_York` ET)**: Automatically detects whether the US equity market is currently in **Live Intraday (`09:30–16:00 ET`)**, **Pre-Market**, **After-Hours**, **Weekend**, or **Market Holiday**. During non-trading hours, it automatically rolls back to the most recent completed trading day's closing snapshot and annotates the exact session status and timestamp in the top bar.
-- **Zero-Rate-Limit SQLite Persistence (`data/market_cache.db`)**: Market snapshots are indexed by `(trading_date, ticker)`. Switching between universes or restarting the app on the same trading day serves data from local SQLite in **`< 2ms`**, completely avoiding Yahoo Finance rate limits while still supporting on-demand **Force Refresh**.
-- **Built-in Configurable Universes (`config/universe.json`)**:
-  - **S&P 500 Core Leaders (50 tickers)**: Flagship constituents across all 11 GICS sectors.
-  - **NASDAQ-100 Core Tech & Growth (22 tickers)**: Semiconductors, AI infrastructure, cloud, and biotech leaders.
-  - **Mega-Cap Tech & AI (16 tickers)**: Magnificent 7 and core AI compute equities.
-  - **Custom Watchlist (Alpha Pool)**: Directly editable from the in-app Watchlist Editor modal.
+### 1. Multi-Market Smart Trading Day Detection & Local SQLite Cache (`core/`)
+- **Top-Bar Multi-Market Switcher (`[US Market | CN A-Shares | HK Stocks]`)**: Switch seamlessly between US, China A-Share, and Hong Kong markets with automatic timezone detection (`America/New_York ET`, `Asia/Shanghai CST`, `Asia/Hong_Kong HKT`), market-specific benchmark index ribbons, and native currency formatting (`$`, `¥`, `HK$`).
+- **Session-Aware Rollback**: Automatically detects whether the selected market is currently in **Live Intraday**, **Midday Break (CN/HK)**, **Pre-Market**, **After-Hours**, **Weekend**, or **Market Holiday**. During non-trading hours, it automatically rolls back to the most recent completed trading day's closing snapshot and annotates the exact session status and timestamp in the top bar.
+- **Zero-Rate-Limit SQLite Persistence (`data/market_cache.db`)**: Market snapshots are indexed by `(trading_date, ticker)`. Switching between markets/universes or restarting the app on the same trading day serves data from local SQLite in **`< 2ms`**, completely avoiding Yahoo Finance rate limits while still supporting on-demand **Force Refresh**.
+- **Built-in Configurable Universes Across 3 Markets (`config/universe.json`)**:
+  - **US Market (`$ USD`)**: *S&P 500 Core Leaders (50)*, *NASDAQ-100 Core Tech (22)*, *Mega-Cap Tech & AI (16)*, *US Custom Watchlist*.
+  - **China A-Shares (`¥ CNY`)**: *CSI 300 Core Leaders (44)*, *A-Share Hard Tech & New Energy (18)*, *A-Share Custom Watchlist* (supports `.SS`/`.SZ` or 6-digit codes).
+  - **Hong Kong Stocks (`HK$ HKD`)**: *Hang Seng Core Blue-Chips (34)*, *Hang Seng TECH & Internet Giants (16)*, *HK Custom Watchlist* (supports `.HK` or 4-digit codes).
 
 ### 2. Four Core Visual Widgets (`analyzers/` + `ui/`)
 
