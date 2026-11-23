@@ -4,7 +4,7 @@
 
 # MarketPulse
 
-**A Cross-Platform Multi-Market (US · China A-Shares · Hong Kong) Quantitative Visualization Terminal**
+**A Cross-Platform Multi-Market (US · China A-Shares · Hong Kong · Crypto) Quantitative Visualization Terminal**
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-38bdf8?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-10b981?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -23,7 +23,7 @@
 
 ## Overview
 
-**MarketPulse** is an institutional-grade, local cross-platform desktop financial terminal built for quantitative researchers, equity analysts, and active traders. Powered by **Python (`yfinance` + `pandas` + `SQLite`)**, **FastAPI**, **Apache ECharts 5**, and **PyWebView**, it automatically detects the latest trading session across **US Equities (`US`)**, **China A-Shares (`CN`)**, and **Hong Kong Stocks (`HK`)**, rendering a high-density, multi-dimensional visual dashboard without requiring paid API keys.
+**MarketPulse** is an institutional-grade, local cross-platform desktop financial terminal built for quantitative researchers, equity analysts, and crypto/multi-asset traders. Powered by **Python (`yfinance` + `pandas` + `SQLite`)**, **FastAPI**, **Apache ECharts 5**, and **PyWebView**, it automatically detects the latest trading session across **US Equities (`US`)**, **China A-Shares (`CN`)**, **Hong Kong Stocks (`HK`)**, and **Blockchain Cryptocurrencies (`CRYPTO`)**, rendering a high-density, multi-dimensional visual dashboard without requiring paid API keys.
 
 Designed with a **modular plugin architecture (`analyzers/`)**, MarketPulse separates market data ingestion and caching from quantitative computation, allowing seamless expansion into historical drawdown backtesting, ETF fund flows, and volatility surface analytics.
 
@@ -31,28 +31,29 @@ Designed with a **modular plugin architecture (`analyzers/`)**, MarketPulse sepa
 
 ## Interface Preview (English UI)
 
-### 1. Main Quantitative Terminal Dashboard
-> Full 4-widget terminal view featuring the Top Control Bar, US Core Index Ribbon (`SPX`, `IXIC`, `DJI`, `RUT`, `VIX`), Market Breadth & KPI Strip, Market Cap Treemap, Top Gainers & Losers Butterfly Chart, Volume Anomaly vs. Return Radar, and Intraday & 52W Water-Level Table.
+### 1. Multi-Market Quantitative Terminal (US Equity View)
+> Full 4-widget terminal view featuring the Top 4-Market Switcher (`[US Market | CN A-Shares | HK Stocks | ₿ Crypto]`), Core Index Ribbon, Market Breadth & KPI Strip, Market Cap Treemap, Top Gainers & Losers Butterfly Chart, Volume Anomaly vs. Return Radar, and Intraday & 52W Water-Level Table.
 
 ![MarketPulse English Main Terminal](docs/assets/screenshot_en_main.png)
 
-### 2. Interactive 20-Day Price Action & Ticker Inspector
-> Clicking any stock block in the Treemap, bar in the Ranking Chart, bubble in the Volume Scatter, or row in the Water-Level Table opens a dedicated modal with trailing 20-day close price action and multi-dimensional metrics.
+### 2. Blockchain Cryptocurrency Market Terminal (`₿ Crypto` 24/7 View)
+> Switching to **`₿ Crypto`** activates 24/7 UTC live session tracking, top crypto benchmark cards (`BTC`, `ETH`, `SOL`, `BNB`, `XRP`), native Web3 sector classification (`Layer 1 / Smart Contracts`, `Payment & Store of Value`, `DeFi & DEX`, `Oracle & Web3 Infra`, `Layer 2 & Scaling`, `Meme & Community`), and a dedicated **Crypto Equities, BTC Miners & Spot ETFs** pool (`IBIT`, `FBTC`, `ETHA`, `MSTR`, `COIN`, `MARA`, `RIOT`, `CLSK`).
 
-![MarketPulse English Ticker Detail Modal](docs/assets/screenshot_en_detail.png)
+![MarketPulse English Crypto View](docs/assets/screenshot_en_detail.png)
 
 ---
 
 ## Key Features
 
 ### 1. Multi-Market Smart Trading Day Detection & Local SQLite Cache (`core/`)
-- **Top-Bar Multi-Market Switcher (`[US Market | CN A-Shares | HK Stocks]`)**: Switch seamlessly between US, China A-Share, and Hong Kong markets with automatic timezone detection (`America/New_York ET`, `Asia/Shanghai CST`, `Asia/Hong_Kong HKT`), market-specific benchmark index ribbons, and native currency formatting (`$`, `¥`, `HK$`).
-- **Session-Aware Rollback**: Automatically detects whether the selected market is currently in **Live Intraday**, **Midday Break (CN/HK)**, **Pre-Market**, **After-Hours**, **Weekend**, or **Market Holiday**. During non-trading hours, it automatically rolls back to the most recent completed trading day's closing snapshot and annotates the exact session status and timestamp in the top bar.
+- **Top-Bar 4-Market Switcher (`[US Market | CN A-Shares | HK Stocks | ₿ Crypto]`)**: Switch seamlessly between US, China A-Share, Hong Kong, and Cryptocurrency markets with automatic timezone detection (`America/New_York ET`, `Asia/Shanghai CST`, `Asia/Hong_Kong HKT`, `24/7 UTC`), market-specific benchmark index ribbons, adaptive decimal precision (up to 6–8 decimals for sub-dollar tokens), and native currency formatting (`$`, `¥`, `HK$`).
+- **Session-Aware Rollback & 24/7 Crypto Engine**: Automatically detects whether an equity market is in **Live Intraday**, **Midday Break (CN/HK)**, **Pre-Market**, **After-Hours**, **Weekend**, or **Market Holiday** (rolling back to the most recent completed close), while recognizing **`24/7 Continuous Trading`** for cryptocurrencies.
 - **Zero-Rate-Limit SQLite Persistence (`data/market_cache.db`)**: Market snapshots are indexed by `(trading_date, ticker)`. Switching between markets/universes or restarting the app on the same trading day serves data from local SQLite in **`< 2ms`**, completely avoiding Yahoo Finance rate limits while still supporting on-demand **Force Refresh**.
-- **Built-in Configurable Universes Across 3 Markets (`config/universe.json`)**:
+- **14 Built-in Configurable Universes Across 4 Markets (`config/universe.json`)**:
   - **US Market (`$ USD`)**: *S&P 500 Core Leaders (50)*, *NASDAQ-100 Core Tech (22)*, *Mega-Cap Tech & AI (16)*, *US Custom Watchlist*.
   - **China A-Shares (`¥ CNY`)**: *CSI 300 Core Leaders (44)*, *A-Share Hard Tech & New Energy (18)*, *A-Share Custom Watchlist* (supports `.SS`/`.SZ` or 6-digit codes).
   - **Hong Kong Stocks (`HK$ HKD`)**: *Hang Seng Core Blue-Chips (34)*, *Hang Seng TECH & Internet Giants (16)*, *HK Custom Watchlist* (supports `.HK` or 4-digit codes).
+  - **Cryptocurrency & Web3 (`$ USD`, 24/7 UTC)**: *Crypto Top 35 Core Leaders (All Web3 Sectors)*, *Smart Contracts, DeFi & Web3 Infra (22)*, *Crypto Equities, BTC Miners & Spot ETFs (15)*, *Crypto Custom Watchlist* (supports shorthand symbols like `BTC`, `ETH`, `SOL`, `DOGE`, `SUI`, `UNI`).
 
 ### 2. Four Core Visual Widgets (`analyzers/` + `ui/`)
 

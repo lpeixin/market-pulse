@@ -62,8 +62,9 @@ class MarketCapTreemapAnalyzer(BaseAnalyzer):
                 price = float(row["price"])
                 children.append(
                     {
-                        "name": str(row["ticker"]),
+                        "name": str(row.get("display_ticker", row["ticker"])),
                         "ticker": str(row["ticker"]),
+                        "display_ticker": str(row.get("display_ticker", row["ticker"])),
                         "company_name": str(row["name"]),
                         "cn_name": str(row["cn_name"]),
                         "sector": sector_en,

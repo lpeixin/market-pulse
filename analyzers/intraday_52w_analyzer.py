@@ -66,6 +66,7 @@ class Intraday52WTableAnalyzer(BaseAnalyzer):
             rows.append(
                 {
                     "ticker": str(row["ticker"]),
+                    "display_ticker": str(row.get("display_ticker", row["ticker"])),
                     "name": str(row["name"]),
                     "cn_name": str(row["cn_name"]),
                     "sector": str(row["sector"]),

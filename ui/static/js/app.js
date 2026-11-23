@@ -12,7 +12,7 @@ const initialColor =
   urlParams.get("color") === "cn" || urlParams.get("color") === "us"
     ? urlParams.get("color")
     : localStorage.getItem("mp_color_mode") || "us";
-const initialMarket = ["US", "CN", "HK"].includes(
+const initialMarket = ["US", "CN", "HK", "CRYPTO"].includes(
   (urlParams.get("market") || "").toUpperCase()
 )
   ? urlParams.get("market").toUpperCase()
@@ -22,29 +22,33 @@ const DEFAULT_UNIVERSE_BY_MARKET = {
   US: "sp500_core",
   CN: "cn_csi300_core",
   HK: "hk_hsi_core",
+  CRYPTO: "crypto_top_core",
 };
 
 const CUSTOM_WATCHLIST_BY_MARKET = {
   US: "custom_watchlist",
   CN: "cn_custom_watchlist",
   HK: "hk_custom_watchlist",
+  CRYPTO: "crypto_custom_watchlist",
 };
 
 const DEFAULT_WATCHLIST_TICKERS = {
   US: "NVDA, TSLA, PLTR, META, AMD, AVGO, NFLX, LLY, JPM, GS, GE, UBER, COST, XOM, CEG",
   CN: "600519.SS, 300750.SZ, 002594.SZ, 688981.SS, 600036.SS, 601318.SS, 300308.SZ, 002371.SZ, 300059.SZ, 600900.SS, 601899.SS, 000333.SZ, 300760.SZ, 601138.SS",
   HK: "0700.HK, 9988.HK, 3690.HK, 1810.HK, 1211.HK, 0981.HK, 0388.HK, 0883.HK, 0005.HK, 1299.HK, 2015.HK, 9961.HK, 9633.HK, 2899.HK",
+  CRYPTO: "BTC, ETH, SOL, BNB, XRP, DOGE, SUI, AVAX, LINK, UNI, AAVE, NEAR, FET, MSTR, COIN",
 };
 
 const state = {
   lang: initialLang, // 'en' | 'zh'
-  market: initialMarket, // 'US' | 'CN' | 'HK'
+  market: initialMarket, // 'US' | 'CN' | 'HK' | 'CRYPTO'
   universeId:
     urlParams.get("universe") || DEFAULT_UNIVERSE_BY_MARKET[initialMarket],
   lastUniverseByMarket: {
     US: "sp500_core",
     CN: "cn_csi300_core",
     HK: "hk_hsi_core",
+    CRYPTO: "crypto_top_core",
   },
   colorMode: initialColor, // 'us' = Green Up/Red Down, 'cn' = Red Up/Green Down
   glMode: "diverging", // 'diverging' | 'ranked'
@@ -75,9 +79,11 @@ const I18N = {
     mktTabUS: "US Market",
     mktTabCN: "CN A-Shares",
     mktTabHK: "HK Stocks",
+    mktTabCRYPTO: "₿ Crypto",
     tradingDatePrefixUS: "US Trading Day:",
     tradingDatePrefixCN: "CN Trading Day:",
     tradingDatePrefixHK: "HK Trading Day:",
+    tradingDatePrefixCRYPTO: "UTC Date:",
     detectingSession: "Detecting market session...",
     loadError: "Failed to load market data. Click Force Refresh to retry.",
     universeLabel: "Universe:",
@@ -197,12 +203,15 @@ const I18N = {
     modalWatchlistTitleUS: "US Custom Watchlist Configuration",
     modalWatchlistTitleCN: "China A-Share Custom Watchlist Configuration",
     modalWatchlistTitleHK: "Hong Kong Stock Custom Watchlist Configuration",
+    modalWatchlistTitleCRYPTO: "Cryptocurrency Custom Watchlist Configuration",
     modalWatchlistDescUS:
       'Enter US stock tickers separated by commas or spaces (e.g., <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>):',
     modalWatchlistDescCN:
       'Enter China A-Share tickers (<code class="font-mono-num">.SS</code> / <code class="font-mono-num">.SZ</code> or 6-digit codes like <code class="font-mono-num">600519, 300750, 002594, 688981</code>):',
     modalWatchlistDescHK:
       'Enter Hong Kong stock tickers (<code class="font-mono-num">.HK</code> or 4-digit codes like <code class="font-mono-num">0700.HK, 9988.HK, 3690.HK, 1810.HK</code>):',
+    modalWatchlistDescCRYPTO:
+      'Enter crypto token symbols or crypto equity tickers (e.g., <code class="font-mono-num">BTC, ETH, SOL, BNB, XRP, DOGE, SUI, UNI, MSTR, COIN</code>):',
     modalWatchlistReset: "Reset Defaults",
     modalWatchlistSave: "Save & Switch to Watchlist",
     modalPluginsTitle: "MarketPulse Modular Analyzer Plugins (analyzers/)",
@@ -214,9 +223,11 @@ const I18N = {
     mktTabUS: "US 美股",
     mktTabCN: "CN A股",
     mktTabHK: "HK 港股",
+    mktTabCRYPTO: "₿ 加密",
     tradingDatePrefixUS: "美股交易日:",
     tradingDatePrefixCN: "A股交易日:",
     tradingDatePrefixHK: "港股交易日:",
+    tradingDatePrefixCRYPTO: "加密交易日:",
     detectingSession: "正在检测交易日状态...",
     loadError: "数据加载异常，请点击强制刷新重试",
     universeLabel: "股票池:",
@@ -335,12 +346,15 @@ const I18N = {
     modalWatchlistTitleUS: "美股自定义观察池配置 (US Custom Watchlist)",
     modalWatchlistTitleCN: "中国 A 股自定义观察池配置 (CN Custom Watchlist)",
     modalWatchlistTitleHK: "香港港股自定义观察池配置 (HK Custom Watchlist)",
+    modalWatchlistTitleCRYPTO: "区块链加密货币自定义观察池配置 (Crypto Watchlist)",
     modalWatchlistDescUS:
       '输入美股代码（以逗号或空格分隔，例如 <code class="font-mono-num">NVDA, TSLA, PLTR, AMD, META, COIN, ARM, MSTR</code>），保存后自动拉取最新行情并缓存：',
     modalWatchlistDescCN:
       '输入 A 股代码（支持 <code class="font-mono-num">.SS</code> / <code class="font-mono-num">.SZ</code> 后缀或直接输入 6 位代码如 <code class="font-mono-num">600519, 300750, 002594, 688981</code>）：',
     modalWatchlistDescHK:
       '输入港股代码（支持 <code class="font-mono-num">.HK</code> 后缀或直接输入 4 位代码如 <code class="font-mono-num">0700.HK, 9988.HK, 3690.HK, 1810.HK</code>）：',
+    modalWatchlistDescCRYPTO:
+      '输入加密货币简称或区块链美股代码（例如 <code class="font-mono-num">BTC, ETH, SOL, BNB, XRP, DOGE, SUI, UNI, MSTR, COIN</code>，系统自动识别补全）：',
     modalWatchlistReset: "恢复默认推荐",
     modalWatchlistSave: "保存并切换到自定义池",
     modalPluginsTitle: "MarketPulse 模块化分析器插件架构 (analyzers/)",
@@ -378,13 +392,31 @@ function sectorName(item) {
   return isZh() ? item.sector_cn || item.sector : item.sector || item.sector_cn;
 }
 
+function fmtPrice(val) {
+  const num = Number(val);
+  if (!Number.isFinite(num)) return "0.00";
+  const abs = Math.abs(num);
+  if (abs === 0) return "0.00";
+  if (abs >= 1.0) return num.toFixed(2);
+  if (abs >= 0.01) return num.toFixed(4);
+  if (abs >= 0.0001) return num.toFixed(6);
+  return num.toFixed(8);
+}
+
+function cleanTicker(item) {
+  if (!item) return "";
+  return item.display_ticker || item.ticker;
+}
+
 function chartNodeLabel(item) {
   if (!item) return "";
-  // For CN / HK markets in Chinese UI mode, show Chinese short name + short code so it's crystal-clear
-  if (isZh() && state.market !== "US" && item.cn_name) {
+  if (state.market === "CRYPTO") {
+    return cleanTicker(item);
+  }
+  if (isZh() && (state.market === "CN" || state.market === "HK") && item.cn_name) {
     return item.cn_name;
   }
-  return item.ticker;
+  return cleanTicker(item);
 }
 
 /* ==========================================================================
@@ -446,9 +478,11 @@ function applyStaticTranslations() {
   const btnUS = document.getElementById("mkt-btn-US");
   const btnCN = document.getElementById("mkt-btn-CN");
   const btnHK = document.getElementById("mkt-btn-HK");
+  const btnCRYPTO = document.getElementById("mkt-btn-CRYPTO");
   if (btnUS) btnUS.textContent = t("mktTabUS");
   if (btnCN) btnCN.textContent = t("mktTabCN");
   if (btnHK) btnHK.textContent = t("mktTabHK");
+  if (btnCRYPTO) btnCRYPTO.textContent = t("mktTabCRYPTO");
 
   document.querySelectorAll(".market-tab").forEach((btn) => {
     const m = btn.getAttribute("data-market");
@@ -934,14 +968,14 @@ function renderTreemap() {
           <div style="min-width: 220px;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 5px;">
               <div>
-                <strong style="font-size: 14px; color: #fff;">${d.ticker}</strong>
+                <strong style="font-size: 14px; color: #fff;">${cleanTicker(d)}</strong>
                 <span style="color: #94a3b8; font-size: 11.5px; margin-left: 4px;">${stockName(d)}</span>
               </div>
               <span style="font-size: 11px; color: #38bdf8;">${sectorName(d)}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
               <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
-              <strong class="font-mono-num">${curSym}${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
+              <strong class="font-mono-num">${curSym}${fmtPrice(d.price)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin: 2px 0;">
               <span style="color:#94a3b8;">${t("ttMcapWeight")}</span>
@@ -979,7 +1013,7 @@ function renderTreemap() {
             if (!d || !d.ticker) return params.name;
             const sign = d.change_pct >= 0 ? "+" : "";
             const titleStr = chartNodeLabel(d);
-            return `{ticker|${titleStr}}\n{chg|${sign}${d.change_pct.toFixed(2)}%}\n{price|${curSym}${d.price.toFixed(2)}}`;
+            return `{ticker|${titleStr}}\n{chg|${sign}${d.change_pct.toFixed(2)}%}\n{price|${curSym}${fmtPrice(d.price)}}`;
           },
           rich: {
             ticker: {
@@ -1088,16 +1122,16 @@ function renderGainersLosers() {
     return `
       <div style="min-width: 215px;">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid #334155; padding-bottom:4px; margin-bottom:5px;">
-          <strong>#${d.rank} ${d.ticker} · ${stockName(d)}</strong>
+          <strong>#${d.rank} ${cleanTicker(d)} · ${stockName(d)}</strong>
           <span style="color:#38bdf8; font-size:11px;">${sectorName(d)}</span>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttPriceChg")}</span>
-          <strong class="font-mono-num">${curSym}${d.price.toFixed(2)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
+          <strong class="font-mono-num">${curSym}${fmtPrice(d.price)} (${sign}${d.change_pct.toFixed(2)}%)</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttAmplitude")}</span>
-          <strong class="font-mono-num" style="color:#f59e0b;">${d.intraday_range_pct.toFixed(2)}% (${curSym}${d.low.toFixed(2)} - ${curSym}${d.high.toFixed(2)})</strong>
+          <strong class="font-mono-num" style="color:#f59e0b;">${d.intraday_range_pct.toFixed(2)}% (${curSym}${fmtPrice(d.low)} - ${curSym}${fmtPrice(d.high)})</strong>
         </div>
         <div style="display:flex; justify-content:space-between; margin:2px 0;">
           <span style="color:#94a3b8;">${t("ttTurnover")}</span>
@@ -1403,12 +1437,12 @@ function renderVolumeScatter() {
         return `
           <div style="min-width: 220px;">
             <div style="display:flex; justify-content:space-between; border-bottom:1px solid #334155; padding-bottom:4px; margin-bottom:5px;">
-              <strong>${d.ticker} · ${stockName(d)}</strong>
+              <strong>${cleanTicker(d)} · ${stockName(d)}</strong>
               <span style="color:#f59e0b; font-size:11px; font-weight:700;">${qLabel}</span>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
               <span style="color:#94a3b8;">${t("ttDailyReturnX")}</span>
-              <strong class="font-mono-num">${sign}${d.change_pct.toFixed(2)}% (${curSym}${d.price.toFixed(2)})</strong>
+              <strong class="font-mono-num">${sign}${d.change_pct.toFixed(2)}% (${curSym}${fmtPrice(d.price)})</strong>
             </div>
             <div style="display:flex; justify-content:space-between; margin:2px 0;">
               <span style="color:#94a3b8;">${t("ttRvolY")}</span>
@@ -1590,13 +1624,13 @@ function renderIntradayTable() {
         <tr data-ticker="${r.ticker}">
           <td>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <strong class="font-mono-num" style="color: #fff; font-size: 12.5px;">${r.ticker}</strong>
+              <strong class="font-mono-num" style="color: #fff; font-size: 12.5px;">${cleanTicker(r)}</strong>
               <span style="font-size: 11px; color: var(--text-secondary); max-width: 115px; overflow: hidden; text-overflow: ellipsis;">${stockName(r)}</span>
             </div>
             <div style="font-size: 10px; color: var(--text-muted);">${sectorName(r)}</div>
           </td>
           <td class="font-mono-num ${chgClass}" style="text-align: right; font-weight: 700;">
-            ${curSym}${r.price.toFixed(2)}
+            ${curSym}${fmtPrice(r.price)}
           </td>
           <td style="text-align: right;">
             <span class="font-mono-num ${badgeClass}">${formatSignPct(r.change_pct)}</span>
@@ -1609,9 +1643,9 @@ function renderIntradayTable() {
           </td>
           <td class="intraday-cell">
             <div class="range-bar-labels font-mono-num">
-              <span>L:${curSym}${r.low.toFixed(2)}</span>
+              <span>L:${curSym}${fmtPrice(r.low)}</span>
               <span style="color: #cbd5e1;">${t("tbRange")} ${r.intraday_range_pct.toFixed(1)}% · ${t("tbPos")} ${r.intraday_pos_pct.toFixed(0)}%</span>
-              <span>H:${curSym}${r.high.toFixed(2)}</span>
+              <span>H:${curSym}${fmtPrice(r.high)}</span>
             </div>
             <div class="range-bar-track">
               <div class="range-bar-fill" style="left: ${leftPct}%; width: ${widthPct}%; background: ${barColor};"></div>
@@ -1622,9 +1656,9 @@ function renderIntradayTable() {
             <div class="range-bar-labels font-mono-num">
               <span style="color: #e2e8f0; font-weight: 700;">${r.drawdown_52w_pct.toFixed(2)}%</span>
               <span style="color: ${ddColor}; font-size: 9.5px;">${regText}</span>
-              <span>H:${curSym}${r.high_52w.toFixed(0)}</span>
+              <span>H:${curSym}${r.high_52w >= 10 ? r.high_52w.toFixed(0) : fmtPrice(r.high_52w)}</span>
             </div>
-            <div class="dd-bar-track" title="${t("tb52wRangeTitle")}: ${curSym}${r.low_52w.toFixed(2)} — ${curSym}${r.high_52w.toFixed(2)} (${r.pos_52w_pct}%)">
+            <div class="dd-bar-track" title="${t("tb52wRangeTitle")}: ${curSym}${fmtPrice(r.low_52w)} — ${curSym}${fmtPrice(r.high_52w)} (${r.pos_52w_pct}%)">
               <div class="dd-bar-fill" style="width: ${ddBarWidth.toFixed(1)}%; background: ${ddColor};"></div>
             </div>
           </td>
@@ -1663,7 +1697,7 @@ function openStockDetailModal(ticker) {
   const modal = document.getElementById("stock-detail-modal");
   modal.classList.add("open");
 
-  document.getElementById("modal-stock-ticker").textContent = stock.ticker;
+  document.getElementById("modal-stock-ticker").textContent = cleanTicker(stock);
   document.getElementById("modal-stock-name").textContent = isZh()
     ? `${stock.cn_name} (${stock.name})`
     : stock.name;
@@ -1675,7 +1709,7 @@ function openStockDetailModal(ticker) {
     <div class="ribbon-card">
       <div class="ribbon-card-top">${t("modalKpiPrice")}</div>
       <div class="font-mono-num ${chgClass}" style="font-size: 15px; font-weight: 800;">
-        ${curSym}${stock.price.toFixed(2)} (${formatSignPct(stock.change_pct)})
+        ${curSym}${fmtPrice(stock.price)} (${formatSignPct(stock.change_pct)})
       </div>
     </div>
     <div class="ribbon-card">
@@ -1693,7 +1727,7 @@ function openStockDetailModal(ticker) {
     <div class="ribbon-card">
       <div class="ribbon-card-top">${t("modalKpi52w")}</div>
       <div class="font-mono-num" style="font-size: 14px; font-weight: 700;">
-        ${stock.drawdown_52w_pct.toFixed(2)}% (${curSym}${stock.high_52w.toFixed(2)})
+        ${stock.drawdown_52w_pct.toFixed(2)}% (${curSym}${fmtPrice(stock.high_52w)})
       </div>
     </div>
   `;

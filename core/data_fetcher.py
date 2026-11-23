@@ -27,17 +27,45 @@ logger = logging.getLogger("MarketPulse.DataFetcher")
 ET_ZONE = ZoneInfo("America/New_York")
 CN_ZONE = ZoneInfo("Asia/Shanghai")
 HK_ZONE = ZoneInfo("Asia/Hong_Kong")
+UTC_ZONE = ZoneInfo("UTC")
 
 MARKET_TIMEZONES: Dict[str, Tuple[ZoneInfo, str]] = {
     "US": (ET_ZONE, "ET"),
     "CN": (CN_ZONE, "CST"),
     "HK": (HK_ZONE, "HKT"),
+    "CRYPTO": (UTC_ZONE, "UTC"),
 }
 
 MARKET_CUSTOM_WATCHLIST_IDS: Dict[str, str] = {
     "US": "custom_watchlist",
     "CN": "cn_custom_watchlist",
     "HK": "hk_custom_watchlist",
+    "CRYPTO": "crypto_custom_watchlist",
+}
+
+CRYPTO_SHORTHAND_MAP: Dict[str, str] = {
+    "UNI": "UNI7083-USD",
+    "UNI-USD": "UNI7083-USD",
+    "SUI": "SUI20947-USD",
+    "SUI-USD": "SUI20947-USD",
+    "APT": "APT21794-USD",
+    "APT-USD": "APT21794-USD",
+    "ARB": "ARB11841-USD",
+    "ARB-USD": "ARB11841-USD",
+    "IMX": "IMX10603-USD",
+    "IMX-USD": "IMX10603-USD",
+    "STX": "STX4847-USD",
+    "STX-USD": "STX4847-USD",
+    "GRT": "GRT6719-USD",
+    "GRT-USD": "GRT6719-USD",
+    "PEPE": "PEPE24478-USD",
+    "PEPE-USD": "PEPE24478-USD",
+}
+
+CRYPTO_EQUITY_TICKERS = {
+    "IBIT", "FBTC", "ETHA", "BITB", "ARKB", "GBTC", "ETHE",
+    "MSTR", "COIN", "HOOD", "XYZ", "SQ", "PYPL",
+    "MARA", "RIOT", "CLSK", "IREN", "CORZ", "HUT", "WULF", "CIFR", "BTDR",
 }
 
 # Baseline approximate diluted shares outstanding (in billions of shares)
@@ -180,6 +208,58 @@ APPROX_SHARES_BILLIONS: Dict[str, float] = {
     "0016.HK": 2.898,
     "1109.HK": 7.131,
     "2899.HK": 26.58,
+    # --- Cryptocurrencies (Circulating supply in billions of coins/tokens) ---
+    "BTC-USD": 0.0198,
+    "ETH-USD": 0.1204,
+    "SOL-USD": 0.475,
+    "BNB-USD": 0.144,
+    "XRP-USD": 57.1,
+    "DOGE-USD": 147.0,
+    "ADA-USD": 35.1,
+    "TRX-USD": 86.2,
+    "AVAX-USD": 0.409,
+    "LINK-USD": 0.626,
+    "DOT-USD": 1.52,
+    "NEAR-USD": 1.22,
+    "SUI20947-USD": 2.93,
+    "APT21794-USD": 0.535,
+    "ATOM-USD": 0.391,
+    "LTC-USD": 0.0752,
+    "BCH-USD": 0.0198,
+    "XLM-USD": 30.1,
+    "ETC-USD": 0.149,
+    "UNI7083-USD": 0.600,
+    "AAVE-USD": 0.015,
+    "MKR-USD": 0.00088,
+    "LDO-USD": 0.895,
+    "CRV-USD": 1.24,
+    "RUNE-USD": 0.338,
+    "FIL-USD": 0.605,
+    "ICP-USD": 0.475,
+    "GRT6719-USD": 9.55,
+    "FET-USD": 2.44,
+    "ARB11841-USD": 4.10,
+    "OP-USD": 1.25,
+    "IMX10603-USD": 1.69,
+    "STX4847-USD": 1.50,
+    "SHIB-USD": 589260.0,
+    "PEPE24478-USD": 420690.0,
+    # --- Crypto Equities, Miners & Spot ETFs (Shares in billions) ---
+    "IBIT": 0.86,
+    "FBTC": 0.26,
+    "ETHA": 0.32,
+    "BITB": 0.075,
+    "MSTR": 0.245,
+    "COIN": 0.251,
+    "HOOD": 0.885,
+    "XYZ": 0.618,
+    "MARA": 0.335,
+    "RIOT": 0.345,
+    "CLSK": 0.278,
+    "IREN": 0.215,
+    "CORZ": 0.285,
+    "HUT": 0.095,
+    "WULF": 0.382,
 }
 
 
@@ -296,6 +376,12 @@ class MarketDataFetcher:
             if sym.isdigit():
                 return f"{sym.zfill(4)}.HK"
             return sym
+        if mkt == "CRYPTO":
+            if sym in CRYPTO_SHORTHAND_MAP:
+                return CRYPTO_SHORTHAND_MAP[sym]
+            if sym in CRYPTO_EQUITY_TICKERS or sym.endswith("-USD"):
+                return sym
+            return f"{sym}-USD"
         # Default US
         return sym.replace(".", "-")
 
@@ -343,6 +429,23 @@ class MarketDataFetcher:
         now_local = datetime.now()
         weekday = now_mkt.weekday()  # 0=Mon .. 6=Sun
         current_time = now_mkt.time()
+
+        formatted_mkt_time = now_mkt.strftime(f"%Y-%m-%d %H:%M:%S {tz_abbr}")
+
+        if mkt == "CRYPTO":
+            effective_date = reference_trading_date or str(now_mkt.date())
+            return {
+                "market": "CRYPTO",
+                "trading_date": effective_date,
+                "session_code": "CRYPTO_24_7",
+                "session_label": "7×24h 全天候交易 · 实时行情快照",
+                "session_label_zh": "7×24h 全天候交易 · 实时行情快照",
+                "session_label_en": "24/7 Continuous Trading · Live Snapshot",
+                "is_intraday": True,
+                "market_time": formatted_mkt_time,
+                "et_time": formatted_mkt_time,
+                "local_time": now_local.strftime("%Y-%m-%d %H:%M:%S"),
+            }
 
         market_prefix_zh = {"US": "美股", "CN": "A股", "HK": "港股"}[mkt]
         market_prefix_en = {"US": "US Market", "CN": "China A-Shares", "HK": "HK Market"}[mkt]
@@ -668,15 +771,30 @@ class MarketDataFetcher:
 
         # Step 1: Determine expected trading date for this specific market
         session_guess = self.get_market_session_info(market=mkt)
+        us_session_guess = self.get_market_session_info(market="US")
         cached_date = self.cache.get_latest_cached_trading_date(tickers=tickers)
 
         target_date = session_guess["trading_date"]
+        min_acceptable_date = (
+            min(target_date, us_session_guess["trading_date"])
+            if mkt == "CRYPTO"
+            else target_date
+        )
+
         if not force_refresh and cached_date:
-            cached_records = self.cache.get_equities(cached_date, tickers)
+            cached_records = (
+                self.cache.get_latest_equities_by_ticker(
+                    tickers, min_trading_date=min_acceptable_date
+                )
+                if mkt == "CRYPTO"
+                else self.cache.get_equities(cached_date, tickers)
+            )
             if (
                 len(cached_records) == len(tickers)
-                and cached_date >= target_date
-                and not session_guess["is_intraday"]
+                and (
+                    (cached_date >= target_date and not session_guess["is_intraday"])
+                    or (mkt == "CRYPTO" and cached_date >= min_acceptable_date)
+                )
             ):
                 session_info = self.get_market_session_info(
                     market=mkt, reference_trading_date=cached_date
@@ -924,19 +1042,29 @@ class MarketDataFetcher:
             (price - low_52w) / span_52w * 100.0 if span_52w > 1e-9 else 50.0
         )
 
-        turnover = price * volume
+        # For Yahoo Finance *-USD crypto pairs, Volume is already reported in USD (24h dollar turnover)
+        if sym.endswith("-USD"):
+            turnover = float(volume)
+        else:
+            turnover = price * volume
 
         closes_20d = [
-            round(float(x), 2) for x in tdf["Close"].dropna().iloc[-20:].tolist()
+            self._round_price(float(x))
+            for x in tdf["Close"].dropna().iloc[-20:].tolist()
         ]
 
         sector_en = meta.get("sector", "Information Technology")
         sector_cn = sector_meta.get(sector_en, {}).get("cn_name", sector_en)
         name_en = meta.get("name", sym)
         name_cn = meta.get("cn_name", name_en)
+        display_ticker = meta.get(
+            "display_ticker",
+            sym[:-4] if sym.endswith("-USD") else sym,
+        )
 
         return {
             "ticker": sym,
+            "display_ticker": display_ticker,
             "market": market,
             "currency": currency_code,
             "currency_symbol": currency_symbol,
@@ -946,12 +1074,12 @@ class MarketDataFetcher:
             "sector_cn": sector_cn,
             "sector_label": f"{sector_cn} ({sector_en})",
             "trading_date": trading_date,
-            "price": round(price, 2),
-            "prev_close": round(prev_close, 2),
-            "open": round(open_p, 2),
-            "high": round(high_p, 2),
-            "low": round(low_p, 2),
-            "change": round(change, 2),
+            "price": self._round_price(price),
+            "prev_close": self._round_price(prev_close),
+            "open": self._round_price(open_p),
+            "high": self._round_price(high_p),
+            "low": self._round_price(low_p),
+            "change": self._round_price(change),
             "change_pct": round(change_pct, 2),
             "market_cap": round(market_cap, 0),
             "market_cap_b": round(market_cap / 1e9, 2),
@@ -966,12 +1094,25 @@ class MarketDataFetcher:
             "turnover_fmt": self.format_market_cap(turnover, currency_symbol),
             "intraday_range_pct": round(intraday_range_pct, 2),
             "intraday_pos_pct": round(float(np.clip(intraday_pos_pct, 0.0, 100.0)), 1),
-            "high_52w": round(high_52w, 2),
-            "low_52w": round(low_52w, 2),
+            "high_52w": self._round_price(high_52w),
+            "low_52w": self._round_price(low_52w),
             "drawdown_52w_pct": round(drawdown_52w_pct, 2),
             "pos_52w_pct": round(float(np.clip(pos_52w_pct, 0.0, 100.0)), 1),
             "sparkline_20d": closes_20d,
         }
+
+    @staticmethod
+    def _round_price(val: float) -> float:
+        abs_v = abs(val)
+        if abs_v == 0:
+            return 0.0
+        if abs_v >= 1.0:
+            return round(val, 2)
+        if abs_v >= 0.01:
+            return round(val, 4)
+        if abs_v >= 0.0001:
+            return round(val, 6)
+        return round(val, 8)
 
     @staticmethod
     def format_market_cap(val: float, currency_symbol: str = "$") -> str:

@@ -25,6 +25,15 @@ def main() -> None:
         ("US", ["sp500_core", "nasdaq_core", "mega_tech", "custom_watchlist"]),
         ("CN", ["cn_csi300_core", "cn_tech_growth", "cn_custom_watchlist"]),
         ("HK", ["hk_hsi_core", "hk_hstech_core", "hk_custom_watchlist"]),
+        (
+            "CRYPTO",
+            [
+                "crypto_top_core",
+                "crypto_defi_infra",
+                "crypto_equities_etf",
+                "crypto_custom_watchlist",
+            ],
+        ),
     ]
 
     for mkt, uids in market_universes:
@@ -92,7 +101,7 @@ def main() -> None:
         )
 
     print("\n" + "=" * 78)
-    print("ALL 3 MARKETS (US / CN A-SHARES / HK STOCKS) & ANALYZERS PASSED!")
+    print("ALL 4 MARKETS (US / CN A-SHARES / HK STOCKS / CRYPTO) & ANALYZERS PASSED!")
     print("=" * 78)
 
 

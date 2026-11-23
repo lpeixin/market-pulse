@@ -58,6 +58,25 @@
         {"ticker": "^HSCC", "name": "HS Red Chip Index", "name_en": "HS Red Chip Index", "name_zh": "红筹指数", "short_name": "HSCCI"},
         {"ticker": "2800.HK", "name": "Tracker Fund of HK", "name_en": "Tracker Fund of HK", "name_zh": "盈富基金", "short_name": "2800.HK"}
       ]
+    },
+    "CRYPTO": {
+      "id": "CRYPTO",
+      "name_en": "Crypto",
+      "name_zh": "加密货币",
+      "short_en": "Crypto",
+      "short_zh": "加密货币",
+      "currency": "USD",
+      "currency_symbol": "$",
+      "timezone": "UTC",
+      "probe_ticker": "BTC-USD",
+      "default_universe": "crypto_top_core",
+      "indices": [
+        {"ticker": "BTC-USD", "name": "Bitcoin", "name_en": "Bitcoin (BTC)", "name_zh": "比特币 (BTC)", "short_name": "BTC"},
+        {"ticker": "ETH-USD", "name": "Ethereum", "name_en": "Ethereum (ETH)", "name_zh": "以太坊 (ETH)", "short_name": "ETH"},
+        {"ticker": "SOL-USD", "name": "Solana", "name_en": "Solana (SOL)", "name_zh": "索拉纳 (SOL)", "short_name": "SOL"},
+        {"ticker": "BNB-USD", "name": "BNB", "name_en": "BNB Chain (BNB)", "name_zh": "币安币 (BNB)", "short_name": "BNB"},
+        {"ticker": "XRP-USD", "name": "XRP", "name_en": "XRP Ledger (XRP)", "name_zh": "瑞波币 (XRP)", "short_name": "XRP"}
+      ]
     }
   },
   "indices": [
@@ -78,7 +97,16 @@
     "Energy": {"cn_name": "能源", "order": 8},
     "Utilities": {"cn_name": "公用事业", "order": 9},
     "Real Estate": {"cn_name": "房地产", "order": 10},
-    "Materials": {"cn_name": "原材料", "order": 11}
+    "Materials": {"cn_name": "原材料", "order": 11},
+    "Layer 1 / Smart Contracts": {"cn_name": "Layer 1 公链", "order": 12},
+    "Payment & Store of Value": {"cn_name": "支付与价值存储", "order": 13},
+    "DeFi & DEX": {"cn_name": "去中心化金融 (DeFi)", "order": 14},
+    "Oracle & Web3 Infra": {"cn_name": "预言机与 Web3 基建", "order": 15},
+    "Layer 2 & Scaling": {"cn_name": "Layer 2 二层扩容", "order": 16},
+    "Meme & Community": {"cn_name": "Meme 与社区生态", "order": 17},
+    "Spot Crypto ETFs": {"cn_name": "现货加密 ETF", "order": 18},
+    "Crypto Exchanges & Treasury": {"cn_name": "加密交易平台与持币企业", "order": 19},
+    "Bitcoin Mining & AI HPC": {"cn_name": "比特币矿企与算力中心", "order": 20}
   },
   "stocks": {
     "AAPL": {"name": "Apple Inc.", "cn_name": "苹果", "sector": "Information Technology"},
@@ -216,7 +244,64 @@
     "0002.HK": {"name": "CLP Holdings", "cn_name": "中电控股", "sector": "Utilities"},
     "0016.HK": {"name": "Sun Hung Kai Prop.", "cn_name": "新鸿基地产", "sector": "Real Estate"},
     "1109.HK": {"name": "China Resources Land", "cn_name": "华润置地", "sector": "Real Estate"},
-    "2899.HK": {"name": "Zijin Mining (HK)", "cn_name": "紫金矿业", "sector": "Materials"}
+    "2899.HK": {"name": "Zijin Mining (HK)", "cn_name": "紫金矿业", "sector": "Materials"},
+
+    "BTC-USD": {"name": "Bitcoin", "cn_name": "比特币 (BTC)", "display_ticker": "BTC", "sector": "Layer 1 / Smart Contracts"},
+    "ETH-USD": {"name": "Ethereum", "cn_name": "以太坊 (ETH)", "display_ticker": "ETH", "sector": "Layer 1 / Smart Contracts"},
+    "SOL-USD": {"name": "Solana", "cn_name": "索拉纳 (SOL)", "display_ticker": "SOL", "sector": "Layer 1 / Smart Contracts"},
+    "BNB-USD": {"name": "BNB Chain", "cn_name": "币安币 (BNB)", "display_ticker": "BNB", "sector": "Layer 1 / Smart Contracts"},
+    "ADA-USD": {"name": "Cardano", "cn_name": "艾达币 (ADA)", "display_ticker": "ADA", "sector": "Layer 1 / Smart Contracts"},
+    "AVAX-USD": {"name": "Avalanche", "cn_name": "雪崩协议 (AVAX)", "display_ticker": "AVAX", "sector": "Layer 1 / Smart Contracts"},
+    "TRX-USD": {"name": "TRON", "cn_name": "波场 (TRX)", "display_ticker": "TRX", "sector": "Layer 1 / Smart Contracts"},
+    "DOT-USD": {"name": "Polkadot", "cn_name": "波卡 (DOT)", "display_ticker": "DOT", "sector": "Layer 1 / Smart Contracts"},
+    "NEAR-USD": {"name": "NEAR Protocol", "cn_name": "NEAR 协议", "display_ticker": "NEAR", "sector": "Layer 1 / Smart Contracts"},
+    "ATOM-USD": {"name": "Cosmos", "cn_name": "阿童木 (ATOM)", "display_ticker": "ATOM", "sector": "Layer 1 / Smart Contracts"},
+    "SUI20947-USD": {"name": "Sui Network", "cn_name": "Sui 公链 (SUI)", "display_ticker": "SUI", "sector": "Layer 1 / Smart Contracts"},
+    "APT21794-USD": {"name": "Aptos", "cn_name": "Aptos 公链 (APT)", "display_ticker": "APT", "sector": "Layer 1 / Smart Contracts"},
+
+    "XRP-USD": {"name": "XRP Ledger", "cn_name": "瑞波币 (XRP)", "display_ticker": "XRP", "sector": "Payment & Store of Value"},
+    "LTC-USD": {"name": "Litecoin", "cn_name": "莱特币 (LTC)", "display_ticker": "LTC", "sector": "Payment & Store of Value"},
+    "BCH-USD": {"name": "Bitcoin Cash", "cn_name": "比特币现金 (BCH)", "display_ticker": "BCH", "sector": "Payment & Store of Value"},
+    "XLM-USD": {"name": "Stellar", "cn_name": "恒星币 (XLM)", "display_ticker": "XLM", "sector": "Payment & Store of Value"},
+    "ETC-USD": {"name": "Ethereum Classic", "cn_name": "以太经典 (ETC)", "display_ticker": "ETC", "sector": "Payment & Store of Value"},
+
+    "UNI7083-USD": {"name": "Uniswap", "cn_name": "Uniswap (UNI)", "display_ticker": "UNI", "sector": "DeFi & DEX"},
+    "AAVE-USD": {"name": "Aave Protocol", "cn_name": "Aave 借贷 (AAVE)", "display_ticker": "AAVE", "sector": "DeFi & DEX"},
+    "MKR-USD": {"name": "MakerDAO", "cn_name": "Maker (MKR)", "display_ticker": "MKR", "sector": "DeFi & DEX"},
+    "LDO-USD": {"name": "Lido DAO", "cn_name": "Lido 质押 (LDO)", "display_ticker": "LDO", "sector": "DeFi & DEX"},
+    "CRV-USD": {"name": "Curve DAO", "cn_name": "Curve (CRV)", "display_ticker": "CRV", "sector": "DeFi & DEX"},
+    "RUNE-USD": {"name": "THORChain", "cn_name": "THORChain (RUNE)", "display_ticker": "RUNE", "sector": "DeFi & DEX"},
+
+    "LINK-USD": {"name": "Chainlink", "cn_name": "Chainlink (LINK)", "display_ticker": "LINK", "sector": "Oracle & Web3 Infra"},
+    "FIL-USD": {"name": "Filecoin", "cn_name": "Filecoin (FIL)", "display_ticker": "FIL", "sector": "Oracle & Web3 Infra"},
+    "ICP-USD": {"name": "Internet Computer", "cn_name": "DFINITY (ICP)", "display_ticker": "ICP", "sector": "Oracle & Web3 Infra"},
+    "GRT6719-USD": {"name": "The Graph", "cn_name": "The Graph (GRT)", "display_ticker": "GRT", "sector": "Oracle & Web3 Infra"},
+    "FET-USD": {"name": "Artificial Superintelligence", "cn_name": "AI 联盟 (FET)", "display_ticker": "FET", "sector": "Oracle & Web3 Infra"},
+
+    "ARB11841-USD": {"name": "Arbitrum", "cn_name": "Arbitrum (ARB)", "display_ticker": "ARB", "sector": "Layer 2 & Scaling"},
+    "OP-USD": {"name": "Optimism", "cn_name": "Optimism (OP)", "display_ticker": "OP", "sector": "Layer 2 & Scaling"},
+    "IMX10603-USD": {"name": "Immutable", "cn_name": "Immutable (IMX)", "display_ticker": "IMX", "sector": "Layer 2 & Scaling"},
+    "STX4847-USD": {"name": "Stacks", "cn_name": "Stacks 比特币L2", "display_ticker": "STX", "sector": "Layer 2 & Scaling"},
+
+    "DOGE-USD": {"name": "Dogecoin", "cn_name": "狗狗币 (DOGE)", "display_ticker": "DOGE", "sector": "Meme & Community"},
+    "SHIB-USD": {"name": "Shiba Inu", "cn_name": "柴犬币 (SHIB)", "display_ticker": "SHIB", "sector": "Meme & Community"},
+    "PEPE24478-USD": {"name": "Pepe Token", "cn_name": "佩佩蛙 (PEPE)", "display_ticker": "PEPE", "sector": "Meme & Community"},
+
+    "IBIT": {"name": "iShares Bitcoin Trust ETF", "cn_name": "贝莱德比特币 ETF", "sector": "Spot Crypto ETFs"},
+    "FBTC": {"name": "Fidelity Wise Origin Bitcoin", "cn_name": "富达比特币 ETF", "sector": "Spot Crypto ETFs"},
+    "ETHA": {"name": "iShares Ethereum Trust ETF", "cn_name": "贝莱德以太坊 ETF", "sector": "Spot Crypto ETFs"},
+    "BITB": {"name": "Bitwise Bitcoin ETF", "cn_name": "Bitwise 比特币 ETF", "sector": "Spot Crypto ETFs"},
+    "MSTR": {"name": "Strategy (MicroStrategy)", "cn_name": "MicroStrategy", "sector": "Crypto Exchanges & Treasury"},
+    "COIN": {"name": "Coinbase Global", "cn_name": "Coinbase 交易所", "sector": "Crypto Exchanges & Treasury"},
+    "HOOD": {"name": "Robinhood Markets", "cn_name": "Robinhood", "sector": "Crypto Exchanges & Treasury"},
+    "XYZ": {"name": "Block Inc.", "cn_name": "Block 支付", "sector": "Crypto Exchanges & Treasury"},
+    "MARA": {"name": "MARA Holdings", "cn_name": "MARA 矿业", "sector": "Bitcoin Mining & AI HPC"},
+    "RIOT": {"name": "Riot Platforms", "cn_name": "Riot 矿业", "sector": "Bitcoin Mining & AI HPC"},
+    "CLSK": {"name": "CleanSpark Inc.", "cn_name": "CleanSpark 矿业", "sector": "Bitcoin Mining & AI HPC"},
+    "IREN": {"name": "IREN Limited", "cn_name": "IREN 算力中心", "sector": "Bitcoin Mining & AI HPC"},
+    "CORZ": {"name": "Core Scientific", "cn_name": "Core Scientific", "sector": "Bitcoin Mining & AI HPC"},
+    "HUT": {"name": "Hut 8 Corp.", "cn_name": "Hut 8 矿业", "sector": "Bitcoin Mining & AI HPC"},
+    "WULF": {"name": "TeraWulf Inc.", "cn_name": "TeraWulf 算力", "sector": "Bitcoin Mining & AI HPC"}
   },
   "universes": {
     "sp500_core": {
@@ -289,12 +374,12 @@
     "cn_csi300_core": {
       "id": "cn_csi300_core",
       "market": "CN",
-      "name": "沪深 300 核心权重 (全行业 40 龙头)",
-      "name_zh": "沪深 300 核心权重 (全行业 40 龙头)",
+      "name": "沪深 300 核心权重 (全行业 44 龙头)",
+      "name_zh": "沪深 300 核心权重 (全行业 44 龙头)",
       "name_en": "CSI 300 Core Leaders (All 11 Sectors)",
       "description": "覆盖中国 A 股全部 11 个 GICS 一级行业的沪深两市核心龙头权重股",
       "description_zh": "覆盖中国 A 股全部 11 个 GICS 一级行业的沪深两市核心龙头权重股",
-      "description_en": "40 flagship China A-Share constituents spanning all 11 GICS sectors",
+      "description_en": "44 flagship China A-Share constituents spanning all 11 GICS sectors",
       "tickers": [
         "600519.SS", "000858.SZ", "600887.SS", "603288.SS",
         "300750.SZ", "300274.SZ", "600406.SS", "601668.SS", "601919.SS", "002352.SZ",
@@ -391,6 +476,70 @@
         "0700.HK", "9988.HK", "3690.HK", "1810.HK", "1211.HK",
         "0981.HK", "0388.HK", "0883.HK", "0005.HK", "1299.HK",
         "2015.HK", "9961.HK", "9633.HK", "2899.HK"
+      ]
+    },
+    "crypto_top_core": {
+      "id": "crypto_top_core",
+      "market": "CRYPTO",
+      "name": "加密货币核心市值 Top 35 (全赛道)",
+      "name_zh": "加密货币核心市值 Top 35 (全赛道)",
+      "name_en": "Crypto Top 35 Core Leaders (All Web3 Sectors)",
+      "description": "覆盖 Layer 1 公链、支付、DeFi、预言机基建、Layer 2 与 Meme 六大原生加密赛道",
+      "description_zh": "覆盖 Layer 1 公链、支付、DeFi、预言机基建、Layer 2 与 Meme 六大原生加密赛道",
+      "description_en": "35 flagship cryptocurrencies spanning L1s, Payments, DeFi, Web3 Infra, L2s & Memes",
+      "tickers": [
+        "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "ADA-USD", "AVAX-USD", "TRX-USD", "DOT-USD", "NEAR-USD", "ATOM-USD", "SUI20947-USD", "APT21794-USD",
+        "XRP-USD", "LTC-USD", "BCH-USD", "XLM-USD", "ETC-USD",
+        "UNI7083-USD", "AAVE-USD", "MKR-USD", "LDO-USD", "CRV-USD", "RUNE-USD",
+        "LINK-USD", "FIL-USD", "ICP-USD", "GRT6719-USD", "FET-USD",
+        "ARB11841-USD", "OP-USD", "IMX10603-USD", "STX4847-USD",
+        "DOGE-USD", "SHIB-USD", "PEPE24478-USD"
+      ]
+    },
+    "crypto_defi_infra": {
+      "id": "crypto_defi_infra",
+      "market": "CRYPTO",
+      "name": "智能合约公链、DeFi 与 Web3 基建核心 (22 标的)",
+      "name_zh": "智能合约公链、DeFi 与 Web3 基建核心 (22 标的)",
+      "name_en": "Smart Contracts, DeFi & Web3 Infra Leaders",
+      "description": "聚焦高性能智能合约公链、去中心化交易所、借贷协议、预言机与二层扩容网络",
+      "description_zh": "聚焦高性能智能合约公链、去中心化交易所、借贷协议、预言机与二层扩容网络",
+      "description_en": "Core smart contract platforms, DEXs, lending protocols, oracles & L2 rollups",
+      "tickers": [
+        "ETH-USD", "SOL-USD", "BNB-USD", "ADA-USD", "AVAX-USD", "NEAR-USD", "SUI20947-USD", "APT21794-USD",
+        "UNI7083-USD", "AAVE-USD", "MKR-USD", "LDO-USD", "CRV-USD", "RUNE-USD",
+        "LINK-USD", "FIL-USD", "ICP-USD", "FET-USD",
+        "ARB11841-USD", "OP-USD", "IMX10603-USD", "STX4847-USD"
+      ]
+    },
+    "crypto_equities_etf": {
+      "id": "crypto_equities_etf",
+      "market": "CRYPTO",
+      "name": "区块链概念股、矿企与现货 ETF 核心池 (15 标的)",
+      "name_zh": "区块链概念股、矿企与现货 ETF 核心池 (15 标的)",
+      "name_en": "Crypto Equities, BTC Miners & Spot ETFs",
+      "description": "涵盖美股现货比特币/以太坊 ETF、合规加密交易所、持币巨头与比特币算力矿企",
+      "description_zh": "涵盖美股现货比特币/以太坊 ETF、合规加密交易所、持币巨头与比特币算力矿企",
+      "description_en": "US-listed Spot BTC/ETH ETFs, crypto exchanges, corporate BTC treasuries & HPC miners",
+      "tickers": [
+        "IBIT", "FBTC", "ETHA", "BITB",
+        "MSTR", "COIN", "HOOD", "XYZ",
+        "MARA", "RIOT", "CLSK", "IREN", "CORZ", "HUT", "WULF"
+      ]
+    },
+    "crypto_custom_watchlist": {
+      "id": "crypto_custom_watchlist",
+      "market": "CRYPTO",
+      "name": "加密货币自定义观察池 (Crypto Custom Pool)",
+      "name_zh": "加密货币自定义观察池 (Crypto Custom Pool)",
+      "name_en": "Custom Watchlist (Crypto Alpha Pool)",
+      "description": "支持直接输入代币简称 (如 BTC, ETH, SOL, DOGE, SUI) 或区块链股票代码动态增删",
+      "description_zh": "支持直接输入代币简称 (如 BTC, ETH, SOL, DOGE, SUI) 或区块链股票代码动态增删",
+      "description_en": "Customizable crypto watchlist supporting token symbols (BTC, SOL, DOGE) or crypto equities",
+      "tickers": [
+        "BTC-USD", "ETH-USD", "SOL-USD", "BNB-USD", "XRP-USD",
+        "DOGE-USD", "SUI20947-USD", "AVAX-USD", "LINK-USD", "UNI7083-USD",
+        "AAVE-USD", "NEAR-USD", "FET-USD", "MSTR", "COIN"
       ]
     }
   }

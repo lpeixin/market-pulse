@@ -82,6 +82,34 @@ class MarketCache:
                     continue
         return results
 
+    def get_latest_equities_by_ticker(
+        self, tickers: List[str], min_trading_date: str
+    ) -> Dict[str, Dict[str, Any]]:
+        """
+        Retrieve the latest cached record for each ticker in `tickers` where trading_date >= min_trading_date.
+        Allows mixed 24/7 crypto tokens and weekday-only crypto equities/ETFs to coexist in one watchlist.
+        """
+        if not tickers:
+            return {}
+        placeholders = ",".join(["?"] * len(tickers))
+        query = f"""
+            SELECT ticker, trading_date, payload_json, updated_at
+            FROM equity_snapshots
+            WHERE trading_date >= ? AND ticker IN ({placeholders})
+            ORDER BY trading_date ASC
+        """
+        results: Dict[str, Dict[str, Any]] = {}
+        with self._get_conn() as conn:
+            rows = conn.execute(query, [min_trading_date, *tickers]).fetchall()
+            for row in rows:
+                try:
+                    data = json.loads(row["payload_json"])
+                    data["_cached_at"] = row["updated_at"]
+                    results[row["ticker"]] = data
+                except json.JSONDecodeError:
+                    continue
+        return results
+
     def get_latest_cached_trading_date(
         self, tickers: Optional[List[str]] = None
     ) -> Optional[str]:

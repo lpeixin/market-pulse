@@ -79,8 +79,8 @@ def api_health() -> Dict[str, Any]:
     return {
         "status": "ok",
         "app": "MarketPulse",
-        "version": "1.1.0",
-        "markets": ["US", "CN", "HK"],
+        "version": "1.2.0",
+        "markets": ["US", "CN", "HK", "CRYPTO"],
         "plugins_loaded": len(AnalyzerRegistry.get_all_plugins_meta()),
     }
 
@@ -141,6 +141,7 @@ def api_update_watchlist(payload: WatchlistUpdatePayload) -> Dict[str, Any]:
         "US": "custom_watchlist",
         "CN": "cn_custom_watchlist",
         "HK": "hk_custom_watchlist",
+        "CRYPTO": "crypto_custom_watchlist",
     }
     return {
         "status": "ok",

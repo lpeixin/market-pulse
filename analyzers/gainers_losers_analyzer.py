@@ -45,6 +45,7 @@ class TopGainersLosersAnalyzer(BaseAnalyzer):
                         "rank": rank,
                         "side": side,
                         "ticker": str(row["ticker"]),
+                        "display_ticker": str(row.get("display_ticker", row["ticker"])),
                         "name": str(row["name"]),
                         "cn_name": str(row["cn_name"]),
                         "sector": str(row["sector"]),
